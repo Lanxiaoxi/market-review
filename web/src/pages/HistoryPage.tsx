@@ -5,7 +5,7 @@ import IndexCard from "@/components/common/IndexCard";
 import BaseCard from "@/components/common/BaseCard";
 import Chip from "@/components/common/Chip";
 import PillButton from "@/components/common/PillButton";
-import BreadthBar from "@/components/charts/BreadthBar";
+import BreadthTable from "@/components/common/BreadthTable";
 import { fetchHistory } from "@/api/history";
 import type { OverviewData } from "@/types/market";
 
@@ -103,28 +103,8 @@ export default function HistoryPage() {
 
           {/* 市场宽度 + 涨停 TOP */}
           <div style={{ display: "flex", gap: 16, alignItems: "stretch" }}>
-            <BaseCard style={{ flex: "0 0 400px", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>市场宽度</span>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <span className="num" style={{ fontSize: 22, fontWeight: 600, color: "var(--up)" }}>{data.breadth.up.toLocaleString()}</span>
-                  <span style={{ fontSize: 12, color: "var(--muted)" }}>上涨</span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <span className="num" style={{ fontSize: 22, fontWeight: 600, color: "var(--down)" }}>{data.breadth.down.toLocaleString()}</span>
-                  <span style={{ fontSize: 12, color: "var(--muted)" }}>下跌</span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <span className="num" style={{ fontSize: 22, fontWeight: 600, color: "var(--muted-strong)" }}>{data.breadth.flat.toLocaleString()}</span>
-                  <span style={{ fontSize: 12, color: "var(--muted)" }}>平盘</span>
-                </div>
-              </div>
-              <BreadthBar up={data.breadth.up} flat={data.breadth.flat} down={data.breadth.down} height={18} />
-              <div style={{ display: "flex", gap: 12 }}>
-                <span style={{ fontSize: 12, color: "var(--up)" }}>上涨 {data.breadth.upPct}%</span>
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>平盘 {data.breadth.flatPct}%</span>
-                <span style={{ fontSize: 12, color: "var(--down)" }}>下跌 {data.breadth.downPct}%</span>
-              </div>
+            <BaseCard style={{ flex: "0 0 400px", padding: "18px 20px" }}>
+              <BreadthTable breadth={data.breadth} />
             </BaseCard>
 
             <BaseCard style={{ flex: "1 1 auto", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>

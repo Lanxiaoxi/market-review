@@ -8,7 +8,7 @@ import PillButton from "@/components/common/PillButton";
 import Chip from "@/components/common/Chip";
 import PlaceholderCard from "@/components/common/PlaceholderCard";
 import IntradayChart from "@/components/charts/IntradayChart";
-import BreadthBar from "@/components/charts/BreadthBar";
+import BreadthTable from "@/components/common/BreadthTable";
 import { TOKENS } from "@/components/charts/BaseChart";
 import { useOverview } from "@/hooks/useOverview";
 import { useChartLibQuery } from "@/hooks/useChartLib";
@@ -57,14 +57,6 @@ function sessionLabels(n: number): string[] {
   if (all.length <= n) return all;
   const step = (all.length - 1) / (n - 1);
   return Array.from({ length: n }, (_, i) => all[Math.round(i * step)]);
-}
-
-/** 成交额统一显示为「xxx亿」：后端可能返回 "2.12万亿"，这里转成 "21200亿" */
-function turnoverToYi(turnover?: string): string {
-  if (!turnover) return "—";
-  const m = turnover.match(/^([\d.]+)万亿$/);
-  if (m) return `${Math.round(parseFloat(m[1]) * 10000).toLocaleString("zh-CN")}亿`;
-  return turnover; // 后端已是 "xxxx亿" 格式
 }
 
 /** 钉选图表的迷你渲染（按 type 区分） */
@@ -275,49 +267,9 @@ export default function OverviewPage() {
           <IntradayChart series={intradaySeries} timeLabels={timeLabels} height={216} />
         </BaseCard>
 
-        {/* 市场宽度 */}
-        <BaseCard style={{ flex: "1 1 400px", minWidth: 0, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>市场宽度</span>
-          {/* 关键信息：上涨 / 平盘 / 下跌家数（大数字，按重要性排列） */}
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span className="num" style={{ fontSize: 22, fontWeight: 600, color: "var(--up)" }}>{data?.breadth.up.toLocaleString() ?? "—"}</span>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>上涨</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span className="num" style={{ fontSize: 22, fontWeight: 600, color: "var(--muted-strong)" }}>{data?.breadth.flat.toLocaleString() ?? "—"}</span>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>平盘</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span className="num" style={{ fontSize: 22, fontWeight: 600, color: "var(--down)" }}>{data?.breadth.down.toLocaleString() ?? "—"}</span>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>下跌</span>
-            </div>
-          </div>
-          {data && (
-            <BreadthBar
-              up={data.breadth.up}
-              flat={data.breadth.flat}
-              down={data.breadth.down}
-              height={18}
-            />
-          )}
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--up)" }}>上涨 {data?.breadth.upPct}%</span>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>平盘 {data?.breadth.flatPct}%</span>
-            <span style={{ fontSize: 12, color: "var(--down)" }}>下跌 {data?.breadth.downPct}%</span>
-          </div>
-          <div style={{ height: 1, background: "var(--border)" }} />
-          {/* 成交额（关键）：居中显示，统一「xxx亿」格式，字号放大 200% 作为卡片视觉焦点 */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>成交额</span>
-            <span className="num" style={{ fontSize: 44, fontWeight: 600, color: "var(--ink)", lineHeight: 1.1 }}>{turnoverToYi(data?.breadth.turnover)}</span>
-          </div>
-          {/* 涨停跌停（次级）：语义色，位于成交额之后 */}
-          <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 13, color: "var(--up)" }}>涨停 {data?.breadth.limitUpCount ?? "—"}</span>
-            <span style={{ fontSize: 13, color: "var(--muted)" }}>·</span>
-            <span style={{ fontSize: 13, color: "var(--down)" }}>跌停 {data?.breadth.limitDownCount ?? "—"}</span>
-          </div>
+        {/* 市场宽度：四列表格（状态｜分布｜占比｜家数）+ 50% 参考刻度 + 成交额/涨跌停指标块 */}
+        <BaseCard style={{ flex: "1 1 400px", minWidth: 0, padding: "18px 20px" }}>
+          <BreadthTable breadth={data?.breadth} showTurnover />
         </BaseCard>
       </div>
 
