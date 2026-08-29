@@ -307,10 +307,10 @@ export default function OverviewPage() {
             <span style={{ fontSize: 12, color: "var(--down)" }}>下跌 {data?.breadth.downPct}%</span>
           </div>
           <div style={{ height: 1, background: "var(--border)" }} />
-          {/* 成交额（关键）：居中显示，统一「xxx亿」格式 */}
+          {/* 成交额（关键）：居中显示，统一「xxx亿」格式，字号放大 200% 作为卡片视觉焦点 */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
             <span style={{ fontSize: 12, color: "var(--muted)" }}>成交额</span>
-            <span className="num" style={{ fontSize: 22, fontWeight: 600, color: "var(--ink)" }}>{turnoverToYi(data?.breadth.turnover)}</span>
+            <span className="num" style={{ fontSize: 44, fontWeight: 600, color: "var(--ink)", lineHeight: 1.1 }}>{turnoverToYi(data?.breadth.turnover)}</span>
           </div>
           {/* 涨停跌停（次级）：语义色，位于成交额之后 */}
           <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "center" }}>
