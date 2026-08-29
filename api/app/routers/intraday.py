@@ -1,13 +1,12 @@
 """GET /api/intraday?codes=sh000001,sh000300,sz399006 —— 指数当日分时（腾讯兜底，含 mock 回退）"""
 
-import asyncio
 import datetime
 
 from fastapi import APIRouter, Query
 
 from app.config import SHANGHAI_TZ
 from app.schemas.intraday import IntradayOut, IntradaySeriesOut
-from app.services.tencent_provider import fetch_intraday_with_fallback
+from app.services.provider import fetch_domain, DOMAIN_INTRADAY
 from app.cache import intraday_cache, DEFAULT_TTL, INTRADAY_TTL
 
 router = APIRouter(tags=["分时"])
@@ -36,10 +35,10 @@ async def get_intraday(
     if cached is not None:
         return IntradayOut(codes=cached)
 
-    results = await asyncio.gather(*(fetch_intraday_with_fallback(c) for c in code_list))
+    results = await fetch_domain(DOMAIN_INTRADAY, code_list)
     payload = {
         c: IntradaySeriesOut(**r)
-        for c, r in zip(code_list, results)
+        for c, r in results.items()
     }
     ttl = INTRADAY_TTL if _is_trading_hours() else DEFAULT_TTL
     intraday_cache.set(cache_key, payload, ttl)

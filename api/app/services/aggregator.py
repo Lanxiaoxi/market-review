@@ -1,5 +1,8 @@
 """
 数据清洗/归一/分档 —— 将 provider 原始数据聚合成 schemas 所需结构
+
+数据源解耦：聚合层不直接依赖任何具体数据源，只通过 provider 注册表
+（fetch_domain）按「数据域」取归一化数据，换源/加源不影响本层与路由。
 """
 
 import datetime
@@ -13,22 +16,20 @@ from app.schemas.overview import (
     DistBucketOut,
     SectorItemOut,
 )
+from app.services.provider import (
+    fetch_domain,
+    DOMAIN_INDICES,
+    DOMAIN_BREADTH,
+    DOMAIN_LIMIT_UP,
+    DOMAIN_SECTORS,
+)
 
 
 async def build_overview() -> OverviewOut:
-    """
-    聚合 tushare + tencent providers → OverviewOut
-    """
-    from app.services.tushare_provider import (
-        fetch_index_daily,
-        fetch_daily_market,
-        fetch_limit_list,
-        fetch_sector_daily,
-    )
-
-    indices_raw = await fetch_index_daily()
-    breadth_raw = await fetch_daily_market()
-    limit_raw = await fetch_limit_list()
+    """按域取数并聚合成 OverviewOut（各域数据源由 provider 映射表决定）"""
+    indices_raw = await fetch_domain(DOMAIN_INDICES)
+    breadth_raw = await fetch_domain(DOMAIN_BREADTH)
+    limit_raw = await fetch_domain(DOMAIN_LIMIT_UP)
 
     indices = [
         IndexSnapshotOut(
@@ -62,7 +63,7 @@ async def build_overview() -> OverviewOut:
     )
 
     # 行业 TOP5 从真实 sector 数据取
-    all_sectors = await fetch_sector_daily()
+    all_sectors = await fetch_domain(DOMAIN_SECTORS)
     sorted_desc = sorted(all_sectors, key=lambda s: s["pct"], reverse=True)
     sorted_asc = sorted(all_sectors, key=lambda s: s["pct"])
 
@@ -104,10 +105,8 @@ async def build_overview() -> OverviewOut:
 
 
 async def build_sectors() -> list[SectorItemOut]:
-    """聚合申万一级行业排名"""
-    from app.services.tushare_provider import fetch_sector_daily
-
-    all_sectors = await fetch_sector_daily()
+    """聚合行业板块排名（数据源由 provider 映射表决定）"""
+    all_sectors = await fetch_domain(DOMAIN_SECTORS)
     return [
         SectorItemOut(
             name=s["name"],

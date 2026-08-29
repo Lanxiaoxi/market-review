@@ -11,6 +11,7 @@ from typing import Optional
 
 from app.config import get_settings
 from app.services.mock_data import MOCK_DATA
+from app.services.provider import BaseProvider
 
 logger = logging.getLogger(__name__)
 
@@ -407,3 +408,21 @@ async def fetch_sector_daily() -> list[dict]:
         logger.warning("[Tushare] 板块数据为空，回退 mock")
         return MOCK_DATA["all_sectors"]
     return sectors
+
+
+class TushareProvider(BaseProvider):
+    """Tushare 数据源（日级主源；内部自带 mock 兜底与腾讯 HSI 补充）"""
+
+    name = "tushare"
+
+    async def fetch_indices(self) -> list[dict]:
+        return await fetch_index_daily()
+
+    async def fetch_breadth(self) -> dict:
+        return await fetch_daily_market()
+
+    async def fetch_limit_top(self) -> list[dict]:
+        return await fetch_limit_list()
+
+    async def fetch_sectors(self) -> list[dict]:
+        return await fetch_sector_daily()

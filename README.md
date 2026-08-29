@@ -35,12 +35,18 @@
 - **APScheduler**（收盘 15:35 全量快照入库）
 - **uv**（依赖管理，`pyproject.toml` + `uv.lock` 锁版本，内置清华 PyPI 镜像）
 
-### 数据源
-| 用途 | 来源 | 说明 |
+### 数据源（Provider 解耦架构）
+> 前端只消费后端 REST 契约，**不知道也不关心数据来自哪个源**；后端按「数据域」通过
+> `api/app/services/provider.py` 的能力矩阵 + 硬编码映射表自动选择数据源（可逐域指定主源，失败自动降级）。
+
+| 数据域 | 配置主源 | 说明 |
 |---|---|---|
-| 日级数据（主源） | **Tushare Pro（2000 积分）** | 指数日线、全市场日线、涨跌停明细、资金流、申万行业分类等 |
-| 分时 / 实时快照（兜底） | **腾讯行情接口** | Tushare 分钟线需 5000 分，故分时走腾讯免费接口 |
-| 无 token 时 | **内置 mock 数据** | `api/app/services/mock_data.py`，便于离线开发调试 |
+| `indices` 指数卡 | Tushare | 指数日线 + sparkline（恒生指数走腾讯兜底） |
+| `breadth` 涨跌家数/分布 | Tushare | 全市场日线一次统计 |
+| `limit_up` 涨停 TOP | **同花顺** | 涨停池（原因/连板/封单），比 Tushare 更全 |
+| `sectors` 板块轮动 | **同花顺** | 同花顺行业指数 + 成分股领涨股（Tushare `sw_daily` 需权限） |
+| `intraday` 指数分时 | 腾讯 | Tushare/同花顺均无分钟线，腾讯免费接口唯一能力源 |
+| 兜底 | mock | `mock_data.py`，无 token / 数据源故障时自动降级，离线可开发 |
 
 ---
 
@@ -71,7 +77,7 @@ market-review/
 │   │   ├── tasks.py          # APScheduler 收盘快照任务（15:35）
 │   │   ├── models/           # SQLModel 表（watchlist / chart_config / snapshot）
 │   │   ├── schemas/          # pydantic 响应模型
-│   │   ├── services/         # tushare / tencent 数据源 + aggregator + snapshot_service
+│   │   ├── services/         # provider 注册表/映射表 + tushare/ths/tencent 数据源 + aggregator
 │   │   └── routers/          # overview / sectors / watchlist / charts / history / intraday
 │   ├── tests/                # pytest（aggregator 单测 + 接口冒烟）
 │   ├── .env.example          # 环境变量模板
@@ -139,11 +145,15 @@ cd api && uv run pytest
 
 | 变量 | 必填 | 说明 |
 |---|---|---|
-| `TUSHARE_TOKEN` | 条件必填 | Tushare Pro token（2000 积分）；留空则后端用 mock 数据 |
+| `TUSHARE_TOKEN` | 条件必填 | Tushare Pro token（2000 积分）；未配置时指数/涨跌家数回退 mock |
+| `THS_API_KEY` | 条件必填 | 同花顺金融数据 API Key（fuyao.aicubes.cn 签发）；未配置时板块/涨停回退其他源 |
 | `APP_ENV` | 否 | `development` / `production`，默认 development（CORS 全放开） |
 | `DATABASE_URL` | 否 | 默认 `sqlite+aiosqlite:///./data/app.db` |
 | `API_TOKEN` | 否 | 配置后，写接口（POST/PUT/DELETE）需携带 `X-API-Token` 头 |
 | `CORS_ORIGINS` | 否 | 生产环境 CORS 白名单（逗号分隔） |
+
+> 数据源选择策略**不**通过环境变量配置：各域主源在 `api/app/services/provider.py` 的
+> `DOMAIN_PROVIDER` 映射表硬编码，`.env` 只存放各类 token。
 
 ---
 

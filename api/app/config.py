@@ -39,6 +39,7 @@ class Settings:
     def __init__(self) -> None:
         self.app_env: str = os.getenv("APP_ENV", "development")
         self.tushare_token: str = os.getenv("TUSHARE_TOKEN", "")
+        self.ths_api_key: str = os.getenv("THS_API_KEY", "")  # 同花顺金融数据 API Key
         self.api_token: str = os.getenv("API_TOKEN", "")  # 可选写接口鉴权
         self.cors_origins: str = os.getenv("CORS_ORIGINS", "")  # 生产白名单，逗号分隔
         self.database_url: str = os.getenv(
@@ -53,6 +54,11 @@ class Settings:
     @property
     def has_tushare(self) -> bool:
         return bool(self.tushare_token)
+
+    @property
+    def has_ths(self) -> bool:
+        """配置了 THS_API_KEY 时，同花顺数据源可用（板块/涨停/指数等）"""
+        return bool(self.ths_api_key)
 
     @property
     def has_api_token(self) -> bool:

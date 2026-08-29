@@ -9,6 +9,7 @@ import tempfile
 
 # ── 在导入任何 app.* 之前设置环境 ──
 os.environ["TUSHARE_TOKEN"] = ""        # 强制 mock 数据源
+os.environ["THS_API_KEY"] = ""          # 同花顺数据源同样禁用（不触网）
 os.environ["APP_ENV"] = "test"
 os.environ["API_TOKEN"] = ""            # 默认免鉴权（鉴权测试单独设置）
 _tmp_dir = tempfile.mkdtemp(prefix="market_review_tests_")

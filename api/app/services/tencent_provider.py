@@ -5,6 +5,7 @@
 - 盘中实时快照：qt.gtimg.cn
 """
 
+import asyncio
 import logging
 import math
 import re
@@ -12,6 +13,7 @@ import re
 import httpx
 
 from app.services.mock_data import MOCK_DATA
+from app.services.provider import BaseProvider
 
 logger = logging.getLogger(__name__)
 
@@ -194,3 +196,14 @@ async def fetch_realtime_snapshot(codes: list[str]) -> dict[str, float]:
     except Exception as e:
         logger.warning("[Tencent] realtime snapshot failed: %s", e)
     return result
+
+
+class TencentProvider(BaseProvider):
+    """腾讯接口（免费兜底：指数分时 + 恒生指数）"""
+
+    name = "tencent"
+
+    async def fetch_intraday(self, codes: list[str]) -> dict:
+        """多指数当日分时（腾讯不可用时逐代码回退 mock，保证前端恒有数据）"""
+        results = await asyncio.gather(*(fetch_intraday_with_fallback(c) for c in codes))
+        return {c: r for c, r in zip(codes, results)}
