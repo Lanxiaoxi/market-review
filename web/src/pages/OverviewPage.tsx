@@ -270,18 +270,19 @@ export default function OverviewPage() {
         {/* 市场宽度 */}
         <BaseCard style={{ flex: "1 1 400px", minWidth: 0, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>市场宽度</span>
+          {/* 关键信息：上涨 / 平盘 / 下跌家数（大数字，按重要性排列） */}
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span className="num" style={{ fontSize: 22, fontWeight: 600, color: "var(--up)" }}>{data?.breadth.up.toLocaleString() ?? "—"}</span>
               <span style={{ fontSize: 12, color: "var(--muted)" }}>上涨</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span className="num" style={{ fontSize: 22, fontWeight: 600, color: "var(--down)" }}>{data?.breadth.down.toLocaleString() ?? "—"}</span>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>下跌</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span className="num" style={{ fontSize: 22, fontWeight: 600, color: "var(--muted-strong)" }}>{data?.breadth.flat.toLocaleString() ?? "—"}</span>
               <span style={{ fontSize: 12, color: "var(--muted)" }}>平盘</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span className="num" style={{ fontSize: 22, fontWeight: 600, color: "var(--down)" }}>{data?.breadth.down.toLocaleString() ?? "—"}</span>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>下跌</span>
             </div>
           </div>
           {data && (
@@ -297,9 +298,17 @@ export default function OverviewPage() {
             <span style={{ fontSize: 12, color: "var(--muted)" }}>平盘 {data?.breadth.flatPct}%</span>
             <span style={{ fontSize: 12, color: "var(--down)" }}>下跌 {data?.breadth.downPct}%</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 13, color: "var(--ink)" }}>成交额 {data?.breadth.turnover}</span>
-            <span style={{ fontSize: 13, color: "var(--muted)" }}>涨停 {data?.breadth.limitUpCount} · 跌停 {data?.breadth.limitDownCount}</span>
+          <div style={{ height: 1, background: "var(--border)" }} />
+          {/* 成交额（关键）：独立成行、大数值 */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>成交额</span>
+            <span className="num" style={{ fontSize: 20, fontWeight: 600, color: "var(--ink)" }}>{data?.breadth.turnover ?? "—"}</span>
+          </div>
+          {/* 涨停跌停（次级）：语义色，位于成交额之后 */}
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <span style={{ fontSize: 13, color: "var(--up)" }}>涨停 {data?.breadth.limitUpCount ?? "—"}</span>
+            <span style={{ fontSize: 13, color: "var(--muted)" }}>·</span>
+            <span style={{ fontSize: 13, color: "var(--down)" }}>跌停 {data?.breadth.limitDownCount ?? "—"}</span>
           </div>
           <div style={{ height: 1, background: "var(--border)" }} />
           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>涨停 TOP</span>
