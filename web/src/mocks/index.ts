@@ -3,7 +3,7 @@
  * 后端 API 不可用时各 hook 回退到这里的常量。
  * 注意：与 api/app/services/mock_data.py 保持数值一致；日期动态生成。
  */
-import type { OverviewData, SectorItem } from "@/types/market";
+import type { OverviewData, SectorItem, IfBasisData } from "@/types/market";
 import type { WatchlistResponse } from "@/api/watchlist";
 
 function todayStr(): string {
@@ -92,3 +92,30 @@ export const MOCK_WATCHLIST: WatchlistResponse = {
   ],
   summary: { totalValue: 128.6, todayPnl: 2.4, holdingPnl: 12.6, position: 82 },
 };
+
+/** 沪深300 期现对比 mock（合成：现货 4600 附近，期货主力小幅升水） */
+function genIfBasisMock(n = 40): IfBasisData {
+  const dates: string[] = [];
+  const spot: number[] = [];
+  const futures: number[] = [];
+  const d = new Date();
+  let count = 0;
+  while (count < n) {
+    d.setDate(d.getDate() - 1);
+    const wd = d.getDay();
+    if (wd === 0 || wd === 6) continue; // 跳过周末
+    count++;
+    dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+    const base = 4600 + Math.sin(count / 6) * 60 + (count % 5) * 4;
+    spot.push(Math.round(base * 100) / 100);
+    futures.push(Math.round(base * 1.0028 * 100) / 100);
+  }
+  return {
+    dates,
+    spot,
+    futures,
+    premium: futures.map((f, i) => Math.round(((f - spot[i]) / spot[i]) * 1000) / 1000),
+  };
+}
+
+export const MOCK_IF_BASIS: IfBasisData = genIfBasisMock();

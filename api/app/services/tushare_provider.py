@@ -108,6 +108,11 @@ def _limit_pct(ts_code: str) -> float:
     return 9.8
 
 
+def _iso_date(yyyymmdd: str) -> str:
+    """20260828 → 2026-08-28"""
+    return f"{yyyymmdd[:4]}-{yyyymmdd[4:6]}-{yyyymmdd[6:8]}"
+
+
 DIST_LABELS = ["涨停", "涨2-10%", "涨0-2%", "平盘", "跌0-2%", "跌2-10%", "跌停"]
 
 
@@ -426,6 +431,73 @@ class TushareProvider(BaseProvider):
 
     async def fetch_sectors(self) -> list[dict]:
         return await fetch_sector_daily()
+
+    async def fetch_index_history(self, code: str, days: int) -> list[dict]:
+        """单个指数历史日 K 收盘价（升序）—— 期现对比等场景用"""
+        ts_code = code.upper()
+
+        def _fetch() -> list[dict]:
+            pro = _ensure_pro()
+            df = pro.index_daily(ts_code=ts_code, limit=days + 5, fields="trade_date,close")
+            if df is None or len(df) == 0:
+                raise ProviderError(f"Tushare index_daily {ts_code} 为空")
+            df = df.sort_values("trade_date")
+            rows = df.tail(days)
+            return [
+                {"date": _iso_date(str(d)), "close": round(float(c), 2)}
+                for d, c in zip(rows["trade_date"], rows["close"])
+            ]
+
+        try:
+            return await asyncio.to_thread(_fetch)
+        except ProviderError:
+            raise
+        except Exception as e:
+            raise ProviderError(f"Tushare 指数历史 {ts_code} 失败: {e}")
+
+    async def fetch_if_main(self, days: int) -> list[dict]:
+        """中金所沪深300股指期货（IF）主力连续日线（升序）
+
+        主力判断：fut_mapping 给出每个交易日的主力合约映射，
+        再按映射合约取 fut_daily 收盘价拼成连续序列。
+        """
+        def _fetch() -> list[dict]:
+            pro = _ensure_pro()
+            mapping = pro.fut_mapping(ts_code="IF.CFX")
+            if mapping is None or len(mapping) == 0:
+                raise ProviderError("Tushare fut_mapping IF.CFX 为空")
+            mapping = mapping.sort_values("trade_date").tail(days)
+
+            start = str(mapping["trade_date"].iloc[0])
+            end = str(mapping["trade_date"].iloc[-1])
+            contracts = mapping["mapping_ts_code"].unique().tolist()
+
+            # 按合约拉取区间日线（主力合约通常 2~4 个）
+            close_by_key: dict[tuple[str, str], float] = {}
+            for c in contracts:
+                df = pro.fut_daily(ts_code=c, start_date=start, end_date=end, fields="trade_date,close")
+                if df is None or len(df) == 0:
+                    continue
+                for _, r in df.iterrows():
+                    close_by_key[(str(r["trade_date"]), c)] = float(r["close"])
+
+            series = []
+            for _, r in mapping.iterrows():
+                date, contract = str(r["trade_date"]), r["mapping_ts_code"]
+                close = close_by_key.get((date, contract))
+                if close is None:
+                    continue  # 该日主力合约数据缺失则跳过
+                series.append({"date": _iso_date(date), "close": round(close, 2)})
+            if not series:
+                raise ProviderError("Tushare IF 主力连续为空")
+            return series
+
+        try:
+            return await asyncio.to_thread(_fetch)
+        except ProviderError:
+            raise
+        except Exception as e:
+            raise ProviderError(f"Tushare IF 主力连续失败: {e}")
 
     async def fetch_stock_sparkline(self, code: str) -> list[float]:
         """单只个股近 12 个交易日收盘价 → 归一化 sparkline（自选页分时走势）"""

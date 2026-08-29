@@ -169,6 +169,7 @@ cd api && uv run pytest
 | GET | `/charts` | 图表库列表 + 钉选配置 |
 | POST / PUT / DELETE | `/charts[/{chart_id}]` | 图表库 CRUD（写接口需 `X-API-Token`） |
 | GET | `/intraday` | 指数分时数据（腾讯接口兜底） |
+| GET | `/charts/if-basis?days=` | 沪深300期现对比（现货 vs 中金所IF主力，日线 + 基差率） |
 | GET | `/history?date=` | 历史收盘快照（复盘对比） |
 | POST | `/history/snapshot` | 手动触发收盘快照入库 |
 

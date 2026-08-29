@@ -1,8 +1,17 @@
 import apiClient from "./client";
-import type { ChartLibItem } from "@/types/market";
+import type { ChartLibItem, IfBasisData } from "@/types/market";
 
 export async function fetchCharts(): Promise<ChartLibItem[]> {
   const { data } = await apiClient.get<ChartLibItem[]>("/charts");
+  return data;
+}
+
+/** 沪深300 期现对比（日线，近 days 个交易日） */
+export async function fetchIfBasis(days = 60): Promise<IfBasisData> {
+  const { data } = await apiClient.get<IfBasisData>("/charts/if-basis", {
+    params: { days },
+    timeout: 30_000,
+  });
   return data;
 }
 

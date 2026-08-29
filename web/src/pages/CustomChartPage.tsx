@@ -3,9 +3,11 @@ import BaseCard from "@/components/common/BaseCard";
 import PlaceholderCard from "@/components/common/PlaceholderCard";
 import BarDistChart from "@/components/charts/BarDistChart";
 import TurnoverChart from "@/components/charts/TurnoverChart";
+import BasisChart from "@/components/charts/BasisChart";
 import { TOKENS } from "@/components/charts/BaseChart";
 import { useOverview } from "@/hooks/useOverview";
 import { useIntraday } from "@/hooks/useIntraday";
+import { useIfBasis } from "@/hooks/useIfBasis";
 import { useChartLibQuery, useToggleChartPin } from "@/hooks/useChartLib";
 import { useChartLibStore } from "@/stores/chartLib";
 
@@ -65,10 +67,12 @@ export default function CustomChartPage() {
   const { data } = useOverview();
   useChartLibQuery(); // 加载图表库到 store
   const { data: intraday } = useIntraday(["sh000001"]); // 上证指数分时（成交额）
+  const { data: basis } = useIfBasis(60); // 沪深300 期现对比（日线）
 
   const charts = useChartLibStore((s) => s.charts);
   const barDist = charts.find((c) => c.id === "bar-dist");
   const turnover = charts.find((c) => c.id === "turnover-intraday");
+  const ifBasis = charts.find((c) => c.id === "if-basis");
 
   // 涨跌家数分布：直接使用后端 7 档真实统计（不再用 up*0.86 近似）
   const distData = (data?.breadth.dist ?? []).map((d) => ({
@@ -119,6 +123,30 @@ export default function CustomChartPage() {
             <TurnoverChart times={shIntraday.times} amounts={shIntraday.amounts} height={300} />
           ) : (
             <PlaceholderCard text="分时数据加载中" />
+          )}
+        </BaseCard>
+
+        {/* 沪深300期现对比（通栏） */}
+        <BaseCard style={{ gridColumn: "1 / -1", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>沪深300期现对比</span>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>沪深300现货 vs 中金所IF主力合约 · 日线</span>
+            {ifBasis && <PinButton id={ifBasis.id} name={ifBasis.name} type={ifBasis.type} pinned={ifBasis.pinned} />}
+          </div>
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "var(--ink)" }}>沪深300现货</span>
+            <span style={{ fontSize: 12, color: "var(--accent)" }}>IF主力合约</span>
+            {basis && basis.dates.length > 0 && (
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                最新基差率 {(basis.premium[basis.premium.length - 1] ?? 0) >= 0 ? "+" : ""}
+                {(basis.premium[basis.premium.length - 1] ?? 0).toFixed(3)}%
+              </span>
+            )}
+          </div>
+          {basis && basis.dates.length > 0 ? (
+            <BasisChart data={basis} height={300} />
+          ) : (
+            <PlaceholderCard text="期现数据加载中" />
           )}
         </BaseCard>
       </div>

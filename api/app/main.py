@@ -20,8 +20,13 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动：初始化 DB（含轻量迁移）+ 定时任务
+    # 启动：初始化 DB（含轻量迁移）+ 图表库种子 + 定时任务
     await init_db()
+    from app.models.db import async_session
+    from app.services.chart_library import seed_chart_library
+
+    async with async_session() as session:
+        await seed_chart_library(session)
     start_scheduler()
     yield
     # 关闭

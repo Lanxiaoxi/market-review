@@ -75,6 +75,32 @@ function MiniChart({ type }: { type: string }) {
     );
   }
   // turnoverIntraday
+  if (type === "turnoverIntraday") {
+    return (
+      <svg width="150" height="48" viewBox="0 0 150 48" fill="none" style={{ display: "block" }}>
+        <rect x="4" y="30" width="10" height="14" fill="var(--bar-fill)" />
+        <rect x="18" y="34" width="10" height="10" fill="var(--bar-fill)" />
+        <rect x="32" y="38" width="10" height="6" fill="var(--bar-fill)" />
+        <rect x="46" y="40" width="10" height="4" fill="var(--bar-fill)" />
+        <rect x="60" y="36" width="10" height="8" fill="var(--bar-fill)" />
+        <rect x="74" y="32" width="10" height="12" fill="var(--bar-fill)" />
+        <rect x="88" y="26" width="10" height="18" fill="var(--bar-fill)" />
+        <rect x="102" y="22" width="10" height="22" fill="var(--bar-fill)" />
+        <rect x="116" y="14" width="10" height="30" fill="var(--bar-fill)" />
+        <rect x="130" y="8" width="10" height="36" fill="var(--bar-fill)" />
+        <polyline points="9,40 23,36 37,34 51,33 65,29 79,27 93,23 107,19 121,13 135,6" stroke="var(--accent)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  // ifBasis：沪深300现货（ink）vs IF主力（accent）两条线
+  if (type === "ifBasis") {
+    return (
+      <svg width="150" height="48" viewBox="0 0 150 48" fill="none" style={{ display: "block" }}>
+        <polyline points="2,40 16,38 30,39 44,34 58,36 72,31 86,33 100,27 114,30 128,24 146,26" stroke="var(--ink)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points="2,36 16,34 30,35 44,29 58,31 72,25 86,27 100,20 114,24 128,16 146,18" stroke="var(--accent)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
   return (
     <svg width="150" height="48" viewBox="0 0 150 48" fill="none" style={{ display: "block" }}>
       <rect x="4" y="30" width="10" height="14" fill="var(--bar-fill)" />
@@ -111,6 +137,7 @@ export default function OverviewPage() {
   const chartNames: Record<string, string> = {
     "bar-dist": "涨跌家数分布",
     "turnover-intraday": "成交额分时",
+    "if-basis": "沪深300期现对比",
   };
 
   // ─── 指数分时对比（T7.2，今日用真实分时，5日/20日用指数 sparkline） ───

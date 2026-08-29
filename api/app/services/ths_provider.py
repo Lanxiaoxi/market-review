@@ -282,6 +282,35 @@ class ThsProvider(BaseProvider):
         closes = [float(b["close_price"]) for b in bars]
         return _normalize_sparkline(closes)
 
+    async def fetch_index_history(self, code: str, days: int) -> list[dict]:
+        """单个指数历史日 K 收盘价（升序）—— 与 tushare 返回结构一致"""
+        import datetime
+
+        thscode = code.upper()
+        days_data = await self._calendar()
+        if not days_data:
+            raise ProviderError("THS 交易日历为空")
+        end_ms = days_data[-1]["date_ms"]
+        start_ms = end_ms - (days + 10) * 86_400_000
+        d = await self._get(
+            "/api/a-share-index/prices/historical",
+            {"thscode": thscode, "interval": "1d", "start": start_ms, "end": end_ms},
+        )
+        bars = d.get("item") or []
+        if len(bars) < 2:
+            raise ProviderError(f"THS 指数 {thscode} 历史K线为空")
+        # date_ms 是 Asia/Shanghai 00:00 的毫秒戳
+        rows = bars[-days:]
+        return [
+            {
+                "date": datetime.datetime.fromtimestamp(
+                    b["date_ms"] / 1000, tz=datetime.timezone(datetime.timedelta(hours=8))
+                ).strftime("%Y-%m-%d"),
+                "close": round(float(b["close_price"]), 2),
+            }
+            for b in rows
+        ]
+
     async def fetch_sectors(self) -> list[dict]:
         """行业板块：THS 一级行业指数 K 线（pct + sparkline）+ 领涨股"""
         catalog_data = await self._get(

@@ -1,17 +1,54 @@
-"""CRUD /api/charts —— 图表库列表 + 钉选配置（写接口受 API Token 保护）"""
+"""CRUD /api/charts —— 图表库列表 + 钉选配置 + 期现对比数据（写接口受 API Token 保护）"""
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 
 from app.auth import require_api_token
+from app.cache import charts_cache, DEFAULT_TTL
 from app.models.db import get_session
 from app.models.chart_config import ChartConfig
-from app.schemas.charts import ChartLibItemOut, ChartCreateIn, ChartUpdateIn
+from app.schemas.charts import ChartLibItemOut, ChartCreateIn, ChartUpdateIn, IfBasisOut
+from app.services.provider import fetch_domain, DOMAIN_INDEX_HISTORY, DOMAIN_IF_MAIN
 
 router = APIRouter(tags=["图表库"])
+
+
+def _align_series(
+    spot_series: list[dict], fut_series: list[dict]
+) -> tuple[list[str], list[float], list[float]]:
+    """按日期对齐现货与期货序列（现货日期为主，期货缺失日跳过）"""
+    fut_by_date = {f["date"]: f["close"] for f in fut_series}
+    dates, spot, futures = [], [], []
+    for s in spot_series:
+        f = fut_by_date.get(s["date"])
+        if f is not None:
+            dates.append(s["date"])
+            spot.append(round(float(s["close"]), 2))
+            futures.append(round(float(f), 2))
+    return dates, spot, futures
+
+
+@router.get("/charts/if-basis", response_model=IfBasisOut)
+async def get_if_basis(days: int = Query(60, ge=10, le=250)):
+    """沪深300 现货 vs 中金所 IF 主力合约（日线，基差率附随）"""
+    cache_key = f"if-basis:{days}"
+    cached = charts_cache.get(cache_key)
+    if cached is not None:
+        return IfBasisOut(**cached)
+
+    spot_series = await fetch_domain(DOMAIN_INDEX_HISTORY, "000300.SH", days)
+    fut_series = await fetch_domain(DOMAIN_IF_MAIN, days)
+    dates, spot, futures = _align_series(spot_series, fut_series)
+    if not dates:
+        raise HTTPException(502, "期现数据为空，请稍后重试")
+
+    premium = [round((f - s) / s * 100, 3) for s, f in zip(spot, futures)]
+    payload = {"dates": dates, "spot": spot, "futures": futures, "premium": premium}
+    charts_cache.set(cache_key, payload, DEFAULT_TTL)
+    return IfBasisOut(**payload)
 
 
 @router.get("/charts", response_model=list[ChartLibItemOut])
