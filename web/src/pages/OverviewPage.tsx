@@ -43,11 +43,20 @@ function mockTodayPoints(spark: number[], seed: number): number[] {
   return spark.map((v, i) => v + Math.sin(i * 1.37 + seed * 2.1) * 2.5);
 }
 
-/** 等距抽样标签（分时 240 分钟 → 5 个刻度） */
-function sampleLabels(times: string[], n: number): string[] {
-  if (times.length <= n) return times;
-  const step = (times.length - 1) / (n - 1);
-  return Array.from({ length: n }, (_, i) => times[Math.round(i * step)]);
+/** 生成 n 个均匀分布的 A 股交易时段标签（09:30–11:30 + 13:00–15:00，共 242 分钟） */
+function sessionLabels(n: number): string[] {
+  const all: string[] = [];
+  const push = (start: number, count: number) => {
+    for (let i = 0; i < count; i++) {
+      const m = start + i;
+      all.push(`${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+    }
+  };
+  push(9 * 60 + 30, 121);
+  push(13 * 60, 121);
+  if (all.length <= n) return all;
+  const step = (all.length - 1) / (n - 1);
+  return Array.from({ length: n }, (_, i) => all[Math.round(i * step)]);
 }
 
 /** 钉选图表的迷你渲染（按 type 区分） */
@@ -135,15 +144,21 @@ export default function OverviewPage() {
   }));
 
   const intradaySeries = period === "today" ? todaySeries : period === "5d" ? series5d : series20d;
+  // 时间轴标签必须与数据点一一对应（ECharts category 轴按索引对齐，长度不等会丢点）
   const todayTimes = intraday?.codes["sh000001"]?.times;
+  const todayLen = intraday?.codes["sh000001"]?.prices.length ?? 12;
+  const todayLabels =
+    todayTimes && todayTimes.length > 0 ? todayTimes : sessionLabels(todayLen);
+  const sparkLen = idxByCode("000001")?.sparkline?.length ?? 12;
+  const labels20d = Array.from({ length: sparkLen }, (_, i) =>
+    i === sparkLen - 1 ? "今日" : `T-${sparkLen - 1 - i}`
+  );
   const timeLabels =
     period === "today"
-      ? todayTimes && todayTimes.length > 0
-        ? sampleLabels(todayTimes, 5)
-        : ["09:30", "10:30", "13:00", "14:00", "15:00"]
+      ? todayLabels
       : period === "5d"
         ? ["T-4", "T-3", "T-2", "T-1", "今日"]
-        : ["T-11", "T-9", "T-7", "T-5", "T-3", "T-1", "今日"];
+        : labels20d;
 
   return (
     <>

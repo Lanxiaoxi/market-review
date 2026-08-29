@@ -18,14 +18,24 @@ export default function IntradayChart({
   timeLabels,
   height = 216,
 }: IntradayChartProps) {
-  const option = useMemo(
-    () => ({
+  const option = useMemo(() => {
+    // 时间轴刻度抽稀：数据点完整传入（242 点），仅标签按 09:30/10:30/13:00/14:00/15:00 展示；
+    // 找不到锚点（如近5日/近20日）时交给 ECharts 自动间隔
+    const anchors = new Set(
+      ["09:30", "10:30", "13:00", "14:00", "15:00"]
+        .map((t) => timeLabels.indexOf(t))
+        .filter((i) => i >= 0)
+    );
+    return {
       grid: { top: 8, right: 36, bottom: 20, left: 44 },
       xAxis: {
         type: "category" as const,
         data: timeLabels,
         boundaryGap: false,
-        axisLabel: { fontSize: 11 },
+        axisLabel: {
+          fontSize: 11,
+          interval: anchors.size > 1 ? (idx: number) => anchors.has(idx) : "auto",
+        },
       },
       yAxis: {
         type: "value" as const,
@@ -65,9 +75,8 @@ export default function IntradayChart({
             }
           : {}),
       })),
-    }),
-    [series, timeLabels]
-  );
+    };
+  }, [series, timeLabels]);
 
   return <BaseChart option={option} height={height} />;
 }
