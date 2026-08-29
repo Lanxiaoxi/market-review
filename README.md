@@ -202,6 +202,9 @@ uv run uvicorn app.main:app --reload --port 8000
 - 健康检查：http://127.0.0.1:8000/api/health
 
 > 不用 uv 也可以：`pip install -e .` 后 `uvicorn app.main:app --reload`。
+>
+> 想看到历史行情（涨跌停家数序列、期现对比等），需要先回填一年数据 ——
+> 见 [首次部署：补齐历史数据](#首次部署补齐历史数据)，本地开发同样适用。
 
 ### 2. 启动前端（端口 5173）
 
@@ -267,14 +270,51 @@ cd api && uv run pytest
 
 1. **前端构建**：`cd web && npm run build`，产物 `web/dist/`
 2. **后端启动**：`uv sync` 后以 `.venv/bin/uvicorn` 经 systemd 常驻（参考 `deploy/market-api.service`）
-3. **首次回填历史**：设 `BACKFILL_ON_STARTUP_DAYS=250` 启动一次（后台跑，不阻塞），
-   或启动后手动 `POST /api/history/backfill?days=250`。
-   回填完成后把该变量改回 `0` —— 已回填的日期由 `fetch_log` 记录，不会重复拉取。
+3. **首次回填历史**（见下方「首次部署：补齐历史数据」）
 4. **反向代理**：Caddy 同域反代（`deploy/Caddyfile`），`/` → 静态资源，`/api/*` → 127.0.0.1:8000，避免 CORS
 5. **容器化（可选）**：`deploy/Dockerfile`
 6. **备份**：`deploy/backup.sh` 每日备份 SQLite 单文件（`api/data/app.db`）
 
 > 每日 15:35 的定时任务会自动回填近 5 个交易日并落收盘快照，日常无需人工干预。
+
+### 首次部署：补齐历史数据
+
+L2 持久层的价值在于「历史数据落本地、不再回源」，所以**首次拉起服务时要先补一年历史**。
+不补也能正常跑（读接口会实时降级到数据源），但享受不到零回源的收益。
+
+两种方式二选一：
+
+**方式一：启动自动回填**（推荐，后台跑不阻塞启动）
+
+```bash
+# api/.env 里设置，启动一次即可
+BACKFILL_ON_STARTUP_DAYS=250
+
+# 启动服务
+uv run uvicorn app.main:app --port 8000
+# 日志出现 [Startup] 自动回填完成：{...} 后，把该变量改回 0
+```
+
+**方式二：启动后手动触发**
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/history/backfill?days=250" \
+     -H "X-API-Token: $API_TOKEN"
+```
+
+返回各域实际写入量，全为 `0` 表示无缺口：
+
+```json
+{"calendar": 778, "stock_names": 5403, "stock_daily": 250,
+ "index_daily": 250, "sector_daily": 250, "futures": 750, "intraday": 0}
+```
+
+> **回填是幂等的**：已拉取的日期记录在 `fetch_log`，重复调用不会重复拉取，
+> 可以放心重试或多次执行。补历史约 **293 次请求**（250 日线 + 8 指数 + 32 板块 + 3 期货），
+> 之后每个交易日自动 1~4 次。
+>
+> 历史回填依赖 Tushare（同花顺的快照接口只能取当日）。若 `TUSHARE_TOKEN` 未配置，
+> 回填会静默跳过并记日志，线上读取仍会实时降级到同花顺，不影响可用性。
 
 ---
 
