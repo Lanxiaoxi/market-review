@@ -8,6 +8,16 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
+  transition: border-color 0.15s ease;
+}
+
+/* 涨跌色边框高亮（红涨绿跌，平盘保持中性发丝边） */
+.cardUp {
+  border-color: var(--up);
+}
+
+.cardDown {
+  border-color: var(--down);
 }
 
 .name {
@@ -32,6 +42,11 @@
 
 .down {
   color: var(--down);
+}
+
+/* 平盘：中性色 */
+.flat {
+  color: var(--muted-strong);
 }
 
 .sparkline {
