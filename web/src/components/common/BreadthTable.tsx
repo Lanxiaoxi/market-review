@@ -54,6 +54,15 @@ export default function BreadthTable({ breadth, showTurnover = false }: BreadthT
         <span className="num" style={{ fontSize: 12, color: "var(--muted)" }}>全市场 {count(total)} 家</span>
       </div>
 
+      {/* 无有效数据占位 */}
+      {!breadth && (
+        <div style={{ padding: "28px 0", textAlign: "center" }}>
+          <span style={{ fontSize: 13, color: "var(--muted-strong)" }}>暂无有效数据</span>
+        </div>
+      )}
+
+      {breadth && (
+        <>
       {/* 汇总堆叠条 + 50% 多空参考刻度（刻度在条正下方，一眼读出多空力量对比） */}
       <div style={{ position: "relative", paddingBottom: 6 }}>
         <div style={{ display: "flex", height: 12, borderRadius: 4, overflow: "hidden", background: "var(--grid)" }}>
@@ -126,6 +135,8 @@ export default function BreadthTable({ breadth, showTurnover = false }: BreadthT
               </span>
             </div>
           </div>
+        </>
+      )}
         </>
       )}
     </div>

@@ -3,10 +3,11 @@
 import hashlib
 import json
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 
 from app.schemas.overview import OverviewOut
 from app.services.aggregator import build_overview
+from app.services.provider import ProviderError
 from app.cache import overview_cache, DEFAULT_TTL
 
 router = APIRouter(tags=["总览"])
@@ -24,7 +25,10 @@ async def get_overview(request: Request, response: Response):
     cache_key = "overview"
     cached = overview_cache.get(cache_key)
     if cached is None:
-        data = await build_overview()
+        try:
+            data = await build_overview()
+        except ProviderError as e:
+            raise HTTPException(503, f"暂无有效数据：{e}")
         cached = data.model_dump()
         overview_cache.set(cache_key, cached, DEFAULT_TTL)
 

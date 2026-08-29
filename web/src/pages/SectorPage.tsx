@@ -27,22 +27,28 @@ export default function SectorPage() {
             { label: "5日走势", className: "colSpark" },
           ]}
         >
-          {(data ?? []).map((s) => {
-            const isUp = s.pct >= 0;
-            return (
-              <div key={s.name} style={{ display: "flex", alignItems: "center", padding: "10px 0" }}>
-                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", width: 120 }}>{s.name}</span>
-                <span className="num" style={{
-                  fontSize: 13, fontWeight: 500, textAlign: "right", width: 80,
-                  color: isUp ? "var(--up)" : "var(--down)",
-                }}>
-                  {isUp ? "+" : ""}{s.pct.toFixed(2)}%
-                </span>
-                <span style={{ fontSize: 13, color: "var(--muted-strong)", flex: 1 }}>{s.leading}</span>
-                <RowSparkline points={s.sparkline} isUp={isUp} />
-              </div>
-            );
-          })}
+          {(data ?? []).length === 0 ? (
+            <div style={{ padding: "32px 20px", textAlign: "center" }}>
+              <span style={{ fontSize: 13, color: "var(--muted-strong)" }}>暂无有效数据</span>
+            </div>
+          ) : (
+            (data ?? []).map((s) => {
+              const isUp = s.pct >= 0;
+              return (
+                <div key={s.name} style={{ display: "flex", alignItems: "center", padding: "10px 0" }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", width: 120 }}>{s.name}</span>
+                  <span className="num" style={{
+                    fontSize: 13, fontWeight: 500, textAlign: "right", width: 80,
+                    color: isUp ? "var(--up)" : "var(--down)",
+                  }}>
+                    {isUp ? "+" : ""}{s.pct.toFixed(2)}%
+                  </span>
+                  <span style={{ fontSize: 13, color: "var(--muted-strong)", flex: 1 }}>{s.leading}</span>
+                  <RowSparkline points={s.sparkline} isUp={isUp} />
+                </div>
+              );
+            })
+          )}
         </DataTable>
       </BaseCard>
     </>

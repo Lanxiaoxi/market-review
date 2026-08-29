@@ -12,8 +12,7 @@ import re
 
 import httpx
 
-from app.services.mock_data import MOCK_DATA
-from app.services.provider import BaseProvider
+from app.services.provider import BaseProvider, ProviderError
 
 logger = logging.getLogger(__name__)
 
@@ -82,17 +81,14 @@ async def fetch_hk_snapshot(code: str) -> dict | None:
             change = float(fields[31])
             pct = float(fields[32])
 
-            # sparkline：真实日 K（归一化），失败时回退 mock（按名称查）
+            # sparkline：真实日 K（归一化），失败时为空数组（卡片不渲染迷你线）
             closes = await fetch_hk_kline(code, days=12)
             if closes:
                 from app.services.tushare_provider import _normalize_sparkline
 
                 sparkline = _normalize_sparkline(closes)
             else:
-                sparkline = next(
-                    (i["sparkline"] for i in MOCK_DATA["indices"] if i["name"] == cfg["name"]),
-                    [14] * 12,
-                )
+                sparkline = []
 
             return {
                 "code": code,
@@ -105,28 +101,6 @@ async def fetch_hk_snapshot(code: str) -> dict | None:
     except Exception as e:
         logger.warning("[Tencent] %s snapshot failed: %s", code, e)
         return None
-
-
-def _mock_intraday() -> dict:
-    """腾讯接口不可用时的分时兜底：生成一个合理的 U 型分时 + 递增成交额"""
-    times, prices, amounts = [], [], []
-    cumulative = 0.0
-    # 09:30 ~ 11:30（121 分钟）+ 13:00 ~ 15:00（121 分钟）
-    for idx in range(242):
-        if idx <= 120:
-            hh, mm = 9 + (30 + idx) // 60, (30 + idx) % 60
-        else:
-            k = idx - 121
-            hh, mm = 13 + k // 60, k % 60
-        times.append(f"{hh:02d}:{mm:02d}")
-        # U 型：早盘低开下探、午前回升、午后回落收平
-        phase = math.sin((idx / 241) * math.pi * 2 + 0.6)
-        prices.append(round(3950 + phase * 22 - (idx / 241) * 6, 2))
-        # 成交额：开盘/尾盘放量，午间缩量（U 型累计曲线）
-        volume = 8e10 + 6e10 * math.sin((idx / 241) * math.pi) * (1 + 0.6 * math.cos(idx / 241 * math.pi * 4))
-        cumulative += volume
-        amounts.append(round(cumulative, 2))
-    return {"times": times, "prices": prices, "amounts": amounts}
 
 
 def _parse_minute_rows(rows: list[str]) -> dict | None:
@@ -160,7 +134,7 @@ async def fetch_intraday(code: str) -> dict | None:
     """
     拉取指数日内分时（当日分钟线）
     code: sh000001 / sz399001 等
-    返回 {"times": [...], "prices": [...], "amounts": [累计成交额(元), ...]}
+    返回 {"times": [...], "prices": [...], "amounts": [累计成交额(元), ...]}，失败返回 None
     Tushare 分钟线需 5000 分 → 腾讯兜底
     """
     url = f"https://web.ifzq.gtimg.cn/appstock/app/minute/query?code={code}"
@@ -176,12 +150,6 @@ async def fetch_intraday(code: str) -> dict | None:
     except Exception as e:
         logger.warning("[Tencent] minute %s failed: %s", code, e)
         return None
-
-
-async def fetch_intraday_with_fallback(code: str) -> dict:
-    """分时数据 + 腾讯不可用时的 mock 兜底（保证前端恒有数据）"""
-    data = await fetch_intraday(code)
-    return data if data is not None else _mock_intraday()
 
 
 async def fetch_realtime_snapshot(codes: list[str]) -> dict[str, float]:
@@ -207,11 +175,16 @@ async def fetch_realtime_snapshot(codes: list[str]) -> dict[str, float]:
 
 
 class TencentProvider(BaseProvider):
-    """腾讯接口（免费兜底：指数分时 + 恒生指数）"""
+    """腾讯接口（免费兜底：指数分时 + 港股指数）"""
 
     name = "tencent"
 
     async def fetch_intraday(self, codes: list[str]) -> dict:
-        """多指数当日分时（腾讯不可用时逐代码回退 mock，保证前端恒有数据）"""
-        results = await asyncio.gather(*(fetch_intraday_with_fallback(c) for c in codes))
-        return {c: r for c, r in zip(codes, results)}
+        """多指数当日分时（真实数据，无 mock；全部失败时 raise 交给注册表降级）"""
+        results = await asyncio.gather(*(fetch_intraday(c) for c in codes))
+        payload = {
+            c: r for c, r in zip(codes, results) if r is not None
+        }
+        if not payload:
+            raise ProviderError("腾讯分时接口全部失败")
+        return payload

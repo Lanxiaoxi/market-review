@@ -20,6 +20,16 @@ import pytest_asyncio
 
 
 @pytest_asyncio.fixture(autouse=True)
+async def _fake_data_sources(monkeypatch):
+    """生产已无 mock 数据：测试注入确定性数据源（patch aggregator.fetch_domain）"""
+    import app.services.aggregator as aggregator
+    from tests.fake_data import fake_fetch_domain
+
+    monkeypatch.setattr(aggregator, "fetch_domain", fake_fetch_domain)
+    yield
+
+
+@pytest_asyncio.fixture(autouse=True)
 async def _init_db():
     """每个测试前确保表结构存在（create_all + 迁移均幂等）"""
     from app.models.db import init_db

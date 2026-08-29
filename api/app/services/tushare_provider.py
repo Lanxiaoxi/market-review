@@ -10,8 +10,7 @@ import logging
 from typing import Optional
 
 from app.config import get_settings
-from app.services.mock_data import MOCK_DATA
-from app.services.provider import BaseProvider
+from app.services.provider import BaseProvider, ProviderError
 
 logger = logging.getLogger(__name__)
 
@@ -136,10 +135,10 @@ def _bucketize(pct: float, ts_code: str) -> str:
 
 
 async def fetch_index_daily() -> list[dict]:
-    """拉取 8 张指数卡的日线数据 + sparkline（7 只 Tushare + 1 只 HSI 腾讯兜底）"""
+    """拉取 10 张指数卡的日线数据 + sparkline（8 只 Tushare + 恒生指数/恒生科技腾讯兜底）"""
     settings = get_settings()
     if not settings.has_tushare:
-        return MOCK_DATA["indices"]
+        raise ProviderError("未配置 TUSHARE_TOKEN，无法获取真实指数数据")
 
     def _fetch():
         pro = _ensure_pro()
@@ -169,7 +168,7 @@ async def fetch_index_daily() -> list[dict]:
 
     indices = await asyncio.to_thread(_fetch)
 
-    # 港股指数（恒生指数/恒生科技）用腾讯兜底（真实日 K 生成 sparkline，失败则回退 mock）
+    # 港股指数（恒生指数/恒生科技）用腾讯兜底（真实日 K 生成 sparkline，失败则跳过该指数）
     for hk_code in HK_INDEX_CODES:
         try:
             from app.services.tencent_provider import fetch_hk_snapshot
@@ -187,7 +186,7 @@ async def fetch_daily_market() -> dict:
     """拉取全市场日线 → 涨跌家数统计（7 档分布）+ 成交额 + 涨跌停数量"""
     settings = get_settings()
     if not settings.has_tushare:
-        return MOCK_DATA["breadth"]
+        raise ProviderError("未配置 TUSHARE_TOKEN，无法获取真实涨跌家数")
 
     def _fetch():
         pro = _ensure_pro()
@@ -195,7 +194,7 @@ async def fetch_daily_market() -> dict:
         try:
             df = pro.daily(trade_date=trade_date, fields="ts_code,pct_chg,amount")
             if df is None or len(df) == 0:
-                return MOCK_DATA["breadth"]
+                raise ProviderError(f"Tushare daily {trade_date} 为空")
 
             counts = {label: 0 for label in DIST_LABELS}
             limit_up = limit_down = 0
@@ -229,7 +228,7 @@ async def fetch_daily_market() -> dict:
             }
         except Exception as e:
             logger.warning("[Tushare] daily failed: %s", e)
-            return MOCK_DATA["breadth"]
+            raise ProviderError(f"Tushare daily 失败: {e}")
 
     return await asyncio.to_thread(_fetch)
 
@@ -238,7 +237,7 @@ async def fetch_limit_list() -> list[dict]:
     """拉取涨停 TOP5（优先 limit_list_d，权限不足时用 daily 近似）"""
     settings = get_settings()
     if not settings.has_tushare:
-        return MOCK_DATA["limit_up_top"]
+        raise ProviderError("未配置 TUSHARE_TOKEN，无法获取真实涨停榜")
 
     def _fetch():
         pro = _ensure_pro()
@@ -259,7 +258,7 @@ async def fetch_limit_list() -> list[dict]:
         try:
             df = pro.daily(trade_date=trade_date, fields="ts_code,pct_chg")
             if df is None or len(df) == 0:
-                return MOCK_DATA["limit_up_top"]
+                raise ProviderError(f"Tushare daily {trade_date} 为空")
             name_map = {}
             try:
                 basic = pro.stock_basic(exchange="", list_status="L", fields="ts_code,name")
@@ -277,9 +276,11 @@ async def fetch_limit_list() -> list[dict]:
                 }
                 for _, row in limit_df.iterrows()
             ]
+        except ProviderError:
+            raise
         except Exception as e:
             logger.warning("[Tushare] daily limit fallback failed: %s", e)
-            return MOCK_DATA["limit_up_top"]
+            raise ProviderError(f"Tushare daily limit fallback 失败: {e}")
 
     return await asyncio.to_thread(_fetch)
 
@@ -368,7 +369,7 @@ async def fetch_sector_daily() -> list[dict]:
     """拉取申万一级行业日线 → SectorItem（并发抓取，含领涨股）"""
     settings = get_settings()
     if not settings.has_tushare:
-        return MOCK_DATA["all_sectors"]
+        raise ProviderError("未配置 TUSHARE_TOKEN，无法获取真实行业数据")
 
     def _prepare():
         pro = _ensure_pro()
@@ -383,7 +384,7 @@ async def fetch_sector_daily() -> list[dict]:
         pro, dates, classify, members, pct_map = await asyncio.to_thread(_prepare)
     except Exception as e:
         logger.warning("[Tushare] sector prepare failed: %s", e)
-        return MOCK_DATA["all_sectors"]
+        raise ProviderError(f"Tushare 行业数据准备失败: {e}")
 
     sem = asyncio.Semaphore(5)  # 控制 Tushare 并发，避免触发频率限制
 
@@ -412,13 +413,13 @@ async def fetch_sector_daily() -> list[dict]:
     results = await asyncio.gather(*(worker(c, n) for c, n in classify))
     sectors = [r for r in results if r is not None]
     if not sectors:
-        logger.warning("[Tushare] 板块数据为空，回退 mock")
-        return MOCK_DATA["all_sectors"]
+        logger.warning("[Tushare] 板块数据为空")
+        raise ProviderError("Tushare 行业板块数据为空")
     return sectors
 
 
 class TushareProvider(BaseProvider):
-    """Tushare 数据源（日级主源；内部自带 mock 兜底与腾讯 HSI 补充）"""
+    """Tushare 数据源（日级主源；无 token 或接口失败时 raise ProviderError，由注册表降级）"""
 
     name = "tushare"
 

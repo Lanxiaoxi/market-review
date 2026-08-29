@@ -1,12 +1,12 @@
-"""GET /api/intraday?codes=sh000001,sh000300,sz399006 —— 指数当日分时（腾讯兜底，含 mock 回退）"""
+"""GET /api/intraday?codes=sh000001,sh000300,sz399006 —— 指数当日分时（腾讯兜底）"""
 
 import datetime
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from app.config import SHANGHAI_TZ
 from app.schemas.intraday import IntradayOut, IntradaySeriesOut
-from app.services.provider import fetch_domain, DOMAIN_INTRADAY
+from app.services.provider import fetch_domain, ProviderError, DOMAIN_INTRADAY
 from app.cache import intraday_cache, DEFAULT_TTL, INTRADAY_TTL
 
 router = APIRouter(tags=["分时"])
@@ -25,7 +25,7 @@ def _is_trading_hours() -> bool:
 async def get_intraday(
     codes: str = Query("sh000001", description="逗号分隔的腾讯行情代码，如 sh000001,sh000300,sz399006"),
 ):
-    """返回多指数当日分时（价格 + 累计成交额），腾讯不可用时回退 mock"""
+    """返回多指数当日分时（价格 + 累计成交额），数据源不可用时 503"""
     code_list = [c.strip() for c in codes.split(",") if c.strip()]
     if not code_list:
         code_list = ["sh000001"]
@@ -35,7 +35,10 @@ async def get_intraday(
     if cached is not None:
         return IntradayOut(codes=cached)
 
-    results = await fetch_domain(DOMAIN_INTRADAY, code_list)
+    try:
+        results = await fetch_domain(DOMAIN_INTRADAY, code_list)
+    except ProviderError as e:
+        raise HTTPException(503, f"暂无有效数据：{e}")
     payload = {
         c: IntradaySeriesOut(**r)
         for c, r in results.items()

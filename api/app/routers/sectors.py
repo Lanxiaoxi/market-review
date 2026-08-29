@@ -3,10 +3,11 @@
 import hashlib
 import json
 
-from fastapi import APIRouter, Query, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 
 from app.schemas.overview import SectorItemOut
 from app.services.aggregator import build_sectors
+from app.services.provider import ProviderError
 from app.cache import sectors_cache, DEFAULT_TTL
 
 router = APIRouter(tags=["板块"])
@@ -27,7 +28,10 @@ async def get_sectors(
     cache_key = f"sectors:{sort}"
     cached = sectors_cache.get(cache_key)
     if cached is None:
-        data = await build_sectors()
+        try:
+            data = await build_sectors()
+        except ProviderError as e:
+            raise HTTPException(503, f"暂无有效数据：{e}")
         if sort == "pct-asc":
             data.sort(key=lambda s: s.pct)
         else:

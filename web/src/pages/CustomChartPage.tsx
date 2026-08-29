@@ -112,7 +112,7 @@ export default function CustomChartPage() {
           {distData.length > 0 ? (
             <BarDistChart data={distData} height={300} />
           ) : (
-            <PlaceholderCard text="暂无分布数据" />
+            <PlaceholderCard text="暂无有效数据" />
           )}
         </BaseCard>
 
@@ -129,7 +129,7 @@ export default function CustomChartPage() {
           {shIntraday && shIntraday.times.length > 0 ? (
             <TurnoverChart times={shIntraday.times} amounts={shIntraday.amounts} height={300} />
           ) : (
-            <PlaceholderCard text="分时数据加载中" />
+            <PlaceholderCard text="暂无有效数据" />
           )}
         </BaseCard>
 
@@ -167,7 +167,7 @@ export default function CustomChartPage() {
           {basis && basis.dates.length > 0 ? (
             <BasisChart data={basis} height={320} />
           ) : (
-            <PlaceholderCard text="期现数据加载中" />
+            <PlaceholderCard text="暂无有效数据" />
           )}
         </BaseCard>
 
@@ -192,7 +192,7 @@ export default function CustomChartPage() {
           {limitCounts && limitCounts.dates.length > 0 ? (
             <LimitCountChart data={limitCounts} height={300} />
           ) : (
-            <PlaceholderCard text="涨跌停家数加载中" />
+            <PlaceholderCard text="暂无有效数据" />
           )}
         </BaseCard>
       </div>

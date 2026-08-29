@@ -28,5 +28,10 @@ async def get_history(
 @router.post("/history/snapshot", response_model=OverviewOut, dependencies=[Depends(require_api_token)])
 async def create_snapshot(session: AsyncSession = Depends(get_session)):
     """手动触发收盘快照入库（同日重复执行会覆盖更新）"""
-    snap = await save_daily_snapshot(session)
+    from app.services.provider import ProviderError
+
+    try:
+        snap = await save_daily_snapshot(session)
+    except ProviderError as e:
+        raise HTTPException(503, f"暂无有效数据，快照未生成：{e}")
     return OverviewOut.model_validate_json(snap.data_json)

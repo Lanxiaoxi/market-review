@@ -7,12 +7,9 @@ import {
   type WatchlistResponse,
 } from "@/api/watchlist";
 import { useWatchlistStore } from "@/stores/watchlist";
-import { MOCK_WATCHLIST } from "@/mocks";
 import type { WatchlistItem } from "@/types/market";
 
-export { MOCK_WATCHLIST };
-
-/** 自选池查询（后端不可用时回退 mock） */
+/** 自选池查询（失败即抛错，页面显示空态） */
 export function useWatchlistQuery() {
   const setItems = useWatchlistStore((s) => s.setItems);
   const setSummary = useWatchlistStore((s) => s.setSummary);
@@ -20,18 +17,11 @@ export function useWatchlistQuery() {
   return useQuery<WatchlistResponse>({
     queryKey: ["watchlist"],
     queryFn: async () => {
-      try {
-        const data = await fetchWatchlist();
-        setItems(data.items);
-        setSummary(data.summary);
-        return data;
-      } catch {
-        setItems(MOCK_WATCHLIST.items);
-        setSummary(MOCK_WATCHLIST.summary);
-        return MOCK_WATCHLIST;
-      }
+      const data = await fetchWatchlist();
+      setItems(data.items);
+      setSummary(data.summary);
+      return data;
     },
-    placeholderData: MOCK_WATCHLIST,
   });
 }
 

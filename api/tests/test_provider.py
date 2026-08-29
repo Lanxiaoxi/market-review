@@ -72,20 +72,23 @@ async def test_fetch_unknown_domain_raises():
 
 @pytest.mark.asyncio
 async def test_fetch_domain_falls_back_on_provider_failure():
-    """主源失败时自动降级到下一个候选（sectors: ths 挂 → tushare mock）"""
+    """主源失败时自动降级到下一个候选（sectors: ths 挂 → tushare 返回数据）"""
     from app.services.ths_provider import ThsProvider
     from app.services.tushare_provider import TushareProvider
 
     async def _boom(self):
         raise ProviderError("模拟 THS 故障")
 
+    async def _ok(self):
+        return [{"name": "测试行业", "pct": 1.0, "leading": "—", "sparkline": [14, 14]}]
+
     provider._instances.clear()
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(ThsProvider, "fetch_sectors", _boom)
+    monkeypatch.setattr(TushareProvider, "fetch_sectors", _ok)
     try:
         result = await fetch_domain("sectors")
-        # 降级到 tushare（测试环境无 token → 内部 mock），应返回非空列表
-        assert isinstance(result, list) and len(result) >= 5
+        assert result == [{"name": "测试行业", "pct": 1.0, "leading": "—", "sparkline": [14, 14]}]
     finally:
         monkeypatch.undo()
         provider._instances.clear()

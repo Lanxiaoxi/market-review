@@ -38,11 +38,6 @@ function toPctChange(src: number[]): number[] {
   return src.map((v) => ((v - base) / base) * 100);
 }
 
-/** 后端/腾讯分时不可用时：用该指数 sparkline 推导示意曲线（按序加确定性偏移，避免三条线重合） */
-function mockTodayPoints(spark: number[], seed: number): number[] {
-  return spark.map((v, i) => v + Math.sin(i * 1.37 + seed * 2.1) * 2.5);
-}
-
 /** 生成 n 个均匀分布的 A 股交易时段标签（09:30–11:30 + 13:00–15:00，共 242 分钟） */
 function sessionLabels(n: number): string[] {
   const all: string[] = [];
@@ -163,14 +158,14 @@ export default function OverviewPage() {
     period === "today"
   );
 
-  // 今日：优先真实分时；不可用时用各指数 sparkline 推导（三条线各自不同）
-  const todaySeries = INDEX_SERIES.map((def, i) => {
+  // 今日：仅使用真实分时；无数据则为空数组（页面显示「暂无有效数据」）
+  const todaySeries = INDEX_SERIES.map((def) => {
     const intra = intraday?.codes[def.tencent];
-    if (intra && intra.prices.length > 0) {
-      return { name: def.name, data: toPctChange(intra.prices), color: def.color };
-    }
-    const spark = idxByCode(def.code)?.sparkline ?? [24, 20, 16, 18, 12, 14, 9, 11, 7, 8, 5, 6];
-    return { name: def.name, data: toPctChange(mockTodayPoints(spark, i)), color: def.color };
+    return {
+      name: def.name,
+      data: intra && intra.prices.length > 0 ? toPctChange(intra.prices) : [],
+      color: def.color,
+    };
   });
 
   const series5d = INDEX_SERIES.map((def) => ({
@@ -200,6 +195,16 @@ export default function OverviewPage() {
       : period === "5d"
         ? ["T-4", "T-3", "T-2", "T-1", "今日"]
         : labels20d;
+
+  // 无有效数据：整页占位（保留标题栏）
+  if (!data || indices.length === 0) {
+    return (
+      <>
+        <PageHeader title="今日总览" sub="3秒扫盘 · 把握全局 · 关键数字与微缩趋势" date="—" />
+        <PlaceholderCard text="暂无有效数据" />
+      </>
+    );
+  }
 
   return (
     <>
@@ -264,7 +269,11 @@ export default function OverviewPage() {
             <span style={{ fontSize: 12, color: "var(--accent)" }}>沪深300</span>
             <span style={{ fontSize: 12, color: "var(--series-purple)" }}>创业板指</span>
           </div>
-          <IntradayChart series={intradaySeries} timeLabels={timeLabels} height={216} />
+          {period === "today" && !todaySeries.some((s) => s.data.length > 0) ? (
+            <PlaceholderCard text="暂无有效数据" />
+          ) : (
+            <IntradayChart series={intradaySeries} timeLabels={timeLabels} height={216} />
+          )}
         </BaseCard>
 
         {/* 市场宽度：四列表格（状态｜分布｜占比｜家数）+ 50% 参考刻度 + 成交额/涨跌停指标块 */}
@@ -279,36 +288,40 @@ export default function OverviewPage() {
           <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>行业板块表现</span>
           <span style={{ fontSize: 12, color: "var(--muted)" }}>申万一级行业 · 领涨/领跌 TOP5 · 单位 %</span>
         </div>
-        <div style={{ display: "flex", gap: 32 }}>
-          {/* 领涨 */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--up)" }}>领涨 TOP5</span>
-            {(data?.sectorsUp ?? []).map((s) => {
-              const maxW = Math.max(...(data?.sectorsUp ?? []).map((x) => Math.abs(x.pct)), 1);
-              return (
-                <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ width: 68, fontSize: 12, color: "var(--ink)", flex: "0 0 auto" }}>{s.name}</span>
-                  <span style={{ height: 8, borderRadius: 4, background: "var(--up)", width: Math.max(8, s.pct / maxW * 100) }} />
-                  <span className="num" style={{ fontSize: 12, fontWeight: 500, color: "var(--up)" }}>+{s.pct.toFixed(2)}%</span>
-                </div>
-              );
-            })}
+        {(data?.sectorsUp?.length ?? 0) === 0 && (data?.sectorsDown?.length ?? 0) === 0 ? (
+          <PlaceholderCard text="暂无有效数据" />
+        ) : (
+          <div style={{ display: "flex", gap: 32 }}>
+            {/* 领涨 */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--up)" }}>领涨 TOP5</span>
+              {(data?.sectorsUp ?? []).map((s) => {
+                const maxW = Math.max(...(data?.sectorsUp ?? []).map((x) => Math.abs(x.pct)), 1);
+                return (
+                  <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ width: 68, fontSize: 12, color: "var(--ink)", flex: "0 0 auto" }}>{s.name}</span>
+                    <span style={{ height: 8, borderRadius: 4, background: "var(--up)", width: Math.max(8, s.pct / maxW * 100) }} />
+                    <span className="num" style={{ fontSize: 12, fontWeight: 500, color: "var(--up)" }}>+{s.pct.toFixed(2)}%</span>
+                  </div>
+                );
+              })}
+            </div>
+            {/* 领跌 */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--down)" }}>领跌 TOP5</span>
+              {(data?.sectorsDown ?? []).map((s) => {
+                const maxW = Math.max(...(data?.sectorsDown ?? []).map((x) => Math.abs(x.pct)), 1);
+                return (
+                  <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ width: 68, fontSize: 12, color: "var(--ink)", flex: "0 0 auto" }}>{s.name}</span>
+                    <span style={{ height: 8, borderRadius: 4, background: "var(--down)", width: Math.max(8, Math.abs(s.pct) / maxW * 100) }} />
+                    <span className="num" style={{ fontSize: 12, fontWeight: 500, color: "var(--down)" }}>{s.pct.toFixed(2)}%</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          {/* 领跌 */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--down)" }}>领跌 TOP5</span>
-            {(data?.sectorsDown ?? []).map((s) => {
-              const maxW = Math.max(...(data?.sectorsDown ?? []).map((x) => Math.abs(x.pct)), 1);
-              return (
-                <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ width: 68, fontSize: 12, color: "var(--ink)", flex: "0 0 auto" }}>{s.name}</span>
-                  <span style={{ height: 8, borderRadius: 4, background: "var(--down)", width: Math.max(8, Math.abs(s.pct) / maxW * 100) }} />
-                  <span className="num" style={{ fontSize: 12, fontWeight: 500, color: "var(--down)" }}>{s.pct.toFixed(2)}%</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        )}
       </BaseCard>
 
       {/* 我的图表（T7.6 钉选闭环） */}
