@@ -247,10 +247,10 @@ export default function OverviewPage() {
         ))}
       </div>
 
-      {/* 指数分时对比 + 市场宽度 */}
-      <div style={{ display: "flex", gap: 16, alignItems: "stretch" }}>
+      {/* 指数分时对比 + 市场宽度（自适应：宽屏并排，窄屏按比例收缩，极窄自动换行） */}
+      <div style={{ display: "flex", gap: 16, alignItems: "stretch", flexWrap: "wrap" }}>
         {/* 指数分时对比 */}
-        <BaseCard style={{ flex: "0 0 968px", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+        <BaseCard style={{ flex: "1 1 968px", minWidth: 0, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>指数分时对比</span>
             <Segmented
@@ -268,7 +268,7 @@ export default function OverviewPage() {
         </BaseCard>
 
         {/* 市场宽度 */}
-        <BaseCard style={{ flex: "1 1 auto", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <BaseCard style={{ flex: "1 1 400px", minWidth: 0, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>市场宽度</span>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
