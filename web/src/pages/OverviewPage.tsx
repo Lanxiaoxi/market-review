@@ -101,6 +101,19 @@ function MiniChart({ type }: { type: string }) {
       </svg>
     );
   }
+  // limitCount：涨停红柱 + 跌停绿柱
+  if (type === "limitCount") {
+    return (
+      <svg width="150" height="48" viewBox="0 0 150 48" fill="none" style={{ display: "block" }}>
+        {[8, 18, 26, 30, 24, 34, 28, 36, 30, 38].map((h, i) => (
+          <rect key={`u${i}`} x={4 + i * 14} y={44 - h} width="6" height={h} rx="1" fill="var(--up)" />
+        ))}
+        {[6, 10, 8, 14, 9, 12, 15, 8, 11, 6].map((h, i) => (
+          <rect key={`d${i}`} x={11 + i * 14} y={44 - h} width="6" height={h} rx="1" fill="var(--down)" />
+        ))}
+      </svg>
+    );
+  }
   return (
     <svg width="150" height="48" viewBox="0 0 150 48" fill="none" style={{ display: "block" }}>
       <rect x="4" y="30" width="10" height="14" fill="var(--bar-fill)" />
@@ -138,6 +151,7 @@ export default function OverviewPage() {
     "bar-dist": "涨跌家数分布",
     "turnover-intraday": "成交额分时",
     "if-basis": "股指期现对比",
+    "limit-count": "涨跌停家数",
   };
 
   // ─── 指数分时对比（T7.2，今日用真实分时，5日/20日用指数 sparkline） ───

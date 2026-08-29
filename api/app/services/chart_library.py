@@ -10,6 +10,7 @@ KNOWN_CHARTS: list[dict] = [
     {"chart_id": "bar-dist", "name": "涨跌家数分布", "chart_type": "barDist"},
     {"chart_id": "turnover-intraday", "name": "成交额分时", "chart_type": "turnoverIntraday"},
     {"chart_id": "if-basis", "name": "股指期现对比", "chart_type": "ifBasis"},
+    {"chart_id": "limit-count", "name": "涨跌停家数", "chart_type": "limitCount"},
 ]
 
 

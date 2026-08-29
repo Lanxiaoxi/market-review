@@ -6,10 +6,12 @@ import Segmented from "@/components/common/Segmented";
 import BarDistChart from "@/components/charts/BarDistChart";
 import TurnoverChart from "@/components/charts/TurnoverChart";
 import BasisChart from "@/components/charts/BasisChart";
+import LimitCountChart from "@/components/charts/LimitCountChart";
 import { TOKENS } from "@/components/charts/BaseChart";
 import { useOverview } from "@/hooks/useOverview";
 import { useIntraday } from "@/hooks/useIntraday";
 import { useIfBasis } from "@/hooks/useIfBasis";
+import { useLimitCounts } from "@/hooks/useLimitCounts";
 import { useChartLibQuery, useToggleChartPin } from "@/hooks/useChartLib";
 import { useChartLibStore } from "@/stores/chartLib";
 
@@ -71,11 +73,13 @@ export default function CustomChartPage() {
   const { data: intraday } = useIntraday(["sh000001"]); // 上证指数分时（成交额）
   const [contract, setContract] = useState("IF"); // 期现对比合约（IF/IH/IM）
   const { data: basis } = useIfBasis(contract, 60);
+  const { data: limitCounts } = useLimitCounts(60); // 日线涨跌停家数
 
   const charts = useChartLibStore((s) => s.charts);
   const barDist = charts.find((c) => c.id === "bar-dist");
   const turnover = charts.find((c) => c.id === "turnover-intraday");
   const ifBasis = charts.find((c) => c.id === "if-basis");
+  const limitCount = charts.find((c) => c.id === "limit-count");
 
   // 涨跌家数分布：直接使用后端 7 档真实统计（不再用 up*0.86 近似）
   const distData = (data?.breadth.dist ?? []).map((d) => ({
@@ -161,6 +165,31 @@ export default function CustomChartPage() {
             <BasisChart data={basis} height={300} />
           ) : (
             <PlaceholderCard text="期现数据加载中" />
+          )}
+        </BaseCard>
+
+        {/* 日线涨停/跌停家数（通栏） */}
+        <BaseCard style={{ gridColumn: "1 / -1", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>涨跌停家数</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>每日涨停/跌停 · 日线</span>
+              {limitCount && <PinButton id={limitCount.id} name={limitCount.name} type={limitCount.type} pinned={limitCount.pinned} />}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "var(--up)" }}>涨停</span>
+            <span style={{ fontSize: 12, color: "var(--down)" }}>跌停</span>
+            {limitCounts && limitCounts.dates.length > 0 && (
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                最新一日（{limitCounts.dates[limitCounts.dates.length - 1]}）：涨停 {limitCounts.limitUp[limitCounts.limitUp.length - 1]} · 跌停 {limitCounts.limitDown[limitCounts.limitDown.length - 1]}
+              </span>
+            )}
+          </div>
+          {limitCounts && limitCounts.dates.length > 0 ? (
+            <LimitCountChart data={limitCounts} height={300} />
+          ) : (
+            <PlaceholderCard text="涨跌停家数加载中" />
           )}
         </BaseCard>
       </div>

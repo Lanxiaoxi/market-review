@@ -49,6 +49,7 @@ def test_resolve_chain_order():
     assert _resolve_chain("stock_sparkline") == ["ths", "tushare"]
     assert _resolve_chain("index_history") == ["tushare", "ths"]
     assert _resolve_chain("futures_main") == ["tushare"]
+    assert _resolve_chain("limit_counts") == ["ths", "tushare"]
 
 
 def test_get_provider_returns_configured_primary():

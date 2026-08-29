@@ -455,6 +455,43 @@ class TushareProvider(BaseProvider):
         except Exception as e:
             raise ProviderError(f"Tushare 指数历史 {ts_code} 失败: {e}")
 
+    async def fetch_limit_counts(self, days: int) -> list[dict]:
+        """日线涨停/跌停家数（daily 全市场近似分档，升序）—— THS 不可用时的兜底"""
+
+        def _fetch() -> list[dict]:
+            pro = _ensure_pro()
+            end = _latest_trade_date(pro)
+            dates = _recent_trade_dates(pro, end, days)
+            result: list[dict] = []
+            for d in dates:
+                try:
+                    df = pro.daily(trade_date=d, fields="ts_code,pct_chg")
+                    if df is None or len(df) == 0:
+                        continue
+                    up = sum(
+                        1
+                        for c, p in zip(df["ts_code"], df["pct_chg"])
+                        if _bucketize(float(p), str(c)) == "涨停"
+                    )
+                    down = sum(
+                        1
+                        for c, p in zip(df["ts_code"], df["pct_chg"])
+                        if _bucketize(float(p), str(c)) == "跌停"
+                    )
+                    result.append({"date": _iso_date(d), "limit_up": up, "limit_down": down})
+                except Exception as e:
+                    logger.warning("[Tushare] daily %s 涨跌停计数失败: %s", d, e)
+            if not result:
+                raise ProviderError("Tushare 涨跌停家数序列为空")
+            return result
+
+        try:
+            return await asyncio.to_thread(_fetch)
+        except ProviderError:
+            raise
+        except Exception as e:
+            raise ProviderError(f"Tushare 涨跌停家数失败: {e}")
+
     async def fetch_futures_main(self, contract: str, days: int) -> list[dict]:
         """中金所股指期货主力连续日线（contract: IF/IH/IM，升序）
 

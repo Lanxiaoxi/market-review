@@ -105,3 +105,10 @@ export interface IfBasisData {
   futures: number[];  // 中金所主力合约收盘
   premium: number[];  // 基差率 % = (futures - spot) / spot * 100
 }
+
+/** 日线涨停/跌停家数序列 */
+export interface LimitCountsData {
+  dates: string[];      // "YYYY-MM-DD"（升序）
+  limitUp: number[];    // 每日涨停家数
+  limitDown: number[];  // 每日跌停家数
+}

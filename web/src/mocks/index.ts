@@ -3,7 +3,7 @@
  * 后端 API 不可用时各 hook 回退到这里的常量。
  * 注意：与 api/app/services/mock_data.py 保持数值一致；日期动态生成。
  */
-import type { OverviewData, SectorItem, IfBasisData } from "@/types/market";
+import type { OverviewData, SectorItem, IfBasisData, LimitCountsData } from "@/types/market";
 import type { WatchlistResponse } from "@/api/watchlist";
 
 function todayStr(): string {
@@ -134,3 +134,24 @@ export function mockIfBasisFor(contract: string): IfBasisData {
   const cfg = MOCK_CONTRACT_BASE[contract] ?? MOCK_CONTRACT_BASE.IF;
   return genIfBasisMock(40, cfg.base, contract, cfg.name);
 }
+
+/** 日线涨跌停家数 mock（合成：涨停 30~90 波动，跌停 2~40） */
+function genLimitCountsMock(n = 40): LimitCountsData {
+  const dates: string[] = [];
+  const limitUp: number[] = [];
+  const limitDown: number[] = [];
+  const d = new Date();
+  let count = 0;
+  while (count < n) {
+    d.setDate(d.getDate() - 1);
+    const wd = d.getDay();
+    if (wd === 0 || wd === 6) continue; // 跳过周末
+    count++;
+    dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+    limitUp.push(Math.round(55 + Math.sin(count / 5) * 22 + (count % 3) * 6));
+    limitDown.push(Math.round(14 + Math.cos(count / 7) * 10 + (count % 4) * 3));
+  }
+  return { dates, limitUp, limitDown };
+}
+
+export const MOCK_LIMIT_COUNTS: LimitCountsData = genLimitCountsMock();

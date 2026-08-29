@@ -87,6 +87,11 @@ def _normalize_sparkline(values: list[float], target_min=4, target_max=24) -> li
     return [target_max - (v - vmin) / (vmax - vmin) * (target_max - target_min) for v in values]
 
 
+def _iso_date(yyyymmdd: str) -> str:
+    """20260828 → 2026-08-28"""
+    return f"{yyyymmdd[:4]}-{yyyymmdd[4:6]}-{yyyymmdd[6:8]}"
+
+
 class ThsProvider(BaseProvider):
     """同花顺数据源（结构化 REST，X-api-key 鉴权）"""
 
@@ -310,6 +315,44 @@ class ThsProvider(BaseProvider):
             }
             for b in rows
         ]
+
+    async def fetch_limit_counts(self, days: int) -> list[dict]:
+        """日线涨停/跌停家数（按日取同花顺涨停池/跌停池的 total 计数，升序）"""
+        cal = await self._calendar()
+        recent = cal[-days:]
+
+        sem = asyncio.Semaphore(MAX_CONCURRENCY)
+
+        async def _counts_for(day: dict) -> dict | None:
+            async with sem:
+                try:
+                    up = await self._get(
+                        "/api/a-share/special-data/limit-up-pool",
+                        {"date_ms": day["date_ms"], "page": 1, "size": 1},
+                    )
+                    down = await self._get(
+                        "/api/a-share/special-data/limit-down-pool",
+                        {"date_ms": day["date_ms"], "page": 1, "size": 1},
+                    )
+                    up_total = (up.get("pagination") or {}).get("total", 0)
+                    down_total = (down.get("pagination") or {}).get("total", 0)
+                    return {
+                        "date": _iso_date(str(day["date"])),
+                        "limit_up": int(up_total),
+                        "limit_down": int(down_total),
+                    }
+                except ProviderError as e:
+                    logger.warning("[THS] %s 涨跌停计数失败: %s", day.get("date"), e)
+                    return None
+
+        results = [
+            r
+            for r in await asyncio.gather(*(_counts_for(d) for d in recent))
+            if r is not None
+        ]
+        if not results:
+            raise ProviderError("THS 涨跌停家数序列为空")
+        return results
 
     async def fetch_sectors(self) -> list[dict]:
         """行业板块：THS 一级行业指数 K 线（pct + sparkline）+ 领涨股"""

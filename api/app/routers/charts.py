@@ -10,8 +10,19 @@ from app.auth import require_api_token
 from app.cache import charts_cache, DEFAULT_TTL
 from app.models.db import get_session
 from app.models.chart_config import ChartConfig
-from app.schemas.charts import ChartLibItemOut, ChartCreateIn, ChartUpdateIn, IfBasisOut
-from app.services.provider import fetch_domain, DOMAIN_INDEX_HISTORY, DOMAIN_FUTURES_MAIN
+from app.schemas.charts import (
+    ChartLibItemOut,
+    ChartCreateIn,
+    ChartUpdateIn,
+    IfBasisOut,
+    LimitCountsOut,
+)
+from app.services.provider import (
+    fetch_domain,
+    DOMAIN_INDEX_HISTORY,
+    DOMAIN_FUTURES_MAIN,
+    DOMAIN_LIMIT_COUNTS,
+)
 
 router = APIRouter(tags=["图表库"])
 
@@ -76,6 +87,27 @@ async def get_futures_basis(
 async def get_if_basis_alias(days: int = Query(60, ge=10, le=250)):
     """旧路径兼容：/charts/if-basis == /charts/futures-basis?contract=IF"""
     return await get_futures_basis(contract="IF", days=days)
+
+
+@router.get("/charts/limit-counts", response_model=LimitCountsOut)
+async def get_limit_counts(days: int = Query(60, ge=10, le=250)):
+    """日线涨停/跌停家数序列（近 days 个交易日）"""
+    cache_key = f"limit-counts:{days}"
+    cached = charts_cache.get(cache_key)
+    if cached is not None:
+        return LimitCountsOut(**cached)
+
+    rows = await fetch_domain(DOMAIN_LIMIT_COUNTS, days)
+    if not rows:
+        raise HTTPException(502, "涨跌停家数数据为空，请稍后重试")
+
+    payload = {
+        "dates": [r["date"] for r in rows],
+        "limit_up": [r["limit_up"] for r in rows],
+        "limit_down": [r["limit_down"] for r in rows],
+    }
+    charts_cache.set(cache_key, payload, DEFAULT_TTL)
+    return LimitCountsOut(**payload)
 
 
 @router.get("/charts", response_model=list[ChartLibItemOut])
