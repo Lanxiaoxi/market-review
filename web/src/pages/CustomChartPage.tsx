@@ -154,15 +154,18 @@ export default function CustomChartPage() {
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <span style={{ fontSize: 12, color: "var(--ink)" }}>{basis?.name ?? "现货指数"}</span>
             <span style={{ fontSize: 12, color: "var(--accent)" }}>{basis?.contract ?? ""}主力合约</span>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>基差（点，现货-期货）</span>
             {basis && basis.dates.length > 0 && (
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                最新基差率 {(basis.premium[basis.premium.length - 1] ?? 0) >= 0 ? "+" : ""}
+              <span style={{ fontSize: 12, color: "var(--muted-strong)" }}>
+                最新基差 {basis.basis[basis.basis.length - 1] >= 0 ? "+" : ""}
+                {basis.basis[basis.basis.length - 1].toFixed(2)} 点 · 基差率{" "}
+                {(basis.premium[basis.premium.length - 1] ?? 0) >= 0 ? "+" : ""}
                 {(basis.premium[basis.premium.length - 1] ?? 0).toFixed(3)}%
               </span>
             )}
           </div>
           {basis && basis.dates.length > 0 ? (
-            <BasisChart data={basis} height={300} />
+            <BasisChart data={basis} height={320} />
           ) : (
             <PlaceholderCard text="期现数据加载中" />
           )}

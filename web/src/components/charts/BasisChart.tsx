@@ -8,59 +8,88 @@ interface BasisChartProps {
 }
 
 /**
- * 沪深300 期现对比（日线）：现货（ink）vs 中金所 IF 主力（accent）
- * 数据点完整传入，日期标签按 ~6 个锚点抽稀；tooltip 附基差率
+ * 股指期货期现对比（日线）—— 双 grid 叠加：
+ * 上图：现货（ink）vs 主力合约（accent）两条折线
+ * 下图：基差柱状（现货 - 期货，点），红正绿负 + 0 零线
+ * X 轴共享对齐，tooltip 同时展示两家数与基差/基差率
  */
-export default function BasisChart({ data, height = 300 }: BasisChartProps) {
-  const { dates, spot, futures, premium } = data;
+export default function BasisChart({ data, height = 320 }: BasisChartProps) {
+  const { dates, spot, futures, basis, premium } = data;
 
   const option = useMemo(() => {
     const n = dates.length;
-    // 日期标签抽稀：首/尾 + 均匀 ~6 个
     const step = Math.max(1, Math.ceil(n / 6));
     const showIdx = (i: number) => i === 0 || i === n - 1 || i % step === 0;
 
     return {
-      grid: { top: 16, right: 36, bottom: 20, left: 56 },
-      xAxis: {
-        type: "category" as const,
-        data: dates,
-        boundaryGap: false,
-        axisLabel: {
-          fontSize: 11,
-          interval: showIdx,
-          formatter: (v: string) => v.slice(5), // "MM-DD"
+      axisPointer: { link: [{ xAxisIndex: "all" }] },
+      grid: [
+        { top: 16, right: 40, bottom: 118, left: 56 },
+        { top: "auto", right: 40, bottom: 16, left: 56, height: 84 },
+      ],
+      xAxis: [
+        {
+          type: "category" as const,
+          gridIndex: 0,
+          data: dates,
+          boundaryGap: false,
+          axisLabel: { show: false },
+          axisTick: { show: false },
+          axisLine: { show: false },
+          splitLine: { show: false },
         },
-        axisTick: { show: false },
-      },
-      yAxis: {
-        type: "value" as const,
-        scale: true,
-        splitLine: { lineStyle: { color: TOKENS.grid } },
-        axisLabel: { fontSize: 11 },
-      },
+        {
+          type: "category" as const,
+          gridIndex: 1,
+          data: dates,
+          boundaryGap: true,
+          axisLabel: { fontSize: 11, interval: showIdx, formatter: (v: string) => v.slice(5) },
+          axisTick: { show: false },
+          axisLine: { show: false },
+          splitLine: { show: false },
+        },
+      ],
+      yAxis: [
+        {
+          type: "value" as const,
+          gridIndex: 0,
+          scale: true,
+          splitLine: { lineStyle: { color: TOKENS.grid } },
+          axisLabel: { fontSize: 11 },
+        },
+        {
+          type: "value" as const,
+          gridIndex: 1,
+          splitLine: { lineStyle: { color: TOKENS.grid } },
+          axisLabel: { fontSize: 11, formatter: (v: number) => `${v}` },
+        },
+      ],
       tooltip: {
-        // 覆写会整体替换 base 的 tooltip，需补全 trigger 与样式
         trigger: "axis" as const,
         backgroundColor: "#fff",
         borderColor: TOKENS.gridStrong,
         textStyle: { color: TOKENS.ink },
         formatter: (params: unknown) => {
-          const arr = params as Array<{ marker: string; seriesName: string; value: number; dataIndex: number }>;
+          const arr = params as Array<{ seriesName: string; value: number; dataIndex: number }>;
           const i = arr[0]?.dataIndex ?? 0;
-          const lines = arr
-            .map((p) => `${p.marker}${p.seriesName}：${p.value.toFixed(2)}`)
-            .join("<br/>");
+          const line = (name: string, v: number, color: string) =>
+            `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color};margin-right:6px"></span>${name}：${v.toFixed(2)}`;
+          const rows = [
+            line("现货指数", spot[i], TOKENS.ink),
+            line("主力合约", futures[i], TOKENS.accent),
+            line("基差（点）", basis[i], basis[i] >= 0 ? TOKENS.up : TOKENS.down),
+          ].join("<br/>");
           const prem = premium[i];
-          const premStr = `${prem >= 0 ? "+" : ""}${prem.toFixed(3)}%`;
-          return `${dates[i]}<br/>${lines}<br/><span style="color:${TOKENS.muted}">基差率 ${premStr}</span>`;
+          return `${dates[i]}<br/>${rows}<br/><span style="color:${TOKENS.muted}">基差率 ${prem >= 0 ? "+" : ""}${prem.toFixed(3)}%</span>`;
         },
       },
       series: [
         {
           type: "line" as const,
-          name: "沪深300现货",
+          name: "现货指数",
           data: spot,
+          xAxisIndex: 0,
+          yAxisIndex: 0,
           smooth: false,
           symbol: "none",
           lineStyle: { width: 2, color: TOKENS.ink, cap: "round" as const, join: "round" as const },
@@ -68,16 +97,37 @@ export default function BasisChart({ data, height = 300 }: BasisChartProps) {
         },
         {
           type: "line" as const,
-          name: "IF主力合约",
+          name: "主力合约",
           data: futures,
+          xAxisIndex: 0,
+          yAxisIndex: 0,
           smooth: false,
           symbol: "none",
           lineStyle: { width: 2, color: TOKENS.accent, cap: "round" as const, join: "round" as const },
           itemStyle: { color: TOKENS.accent },
         },
+        {
+          type: "bar" as const,
+          name: "基差（点）",
+          data: basis.map((v) => ({
+            value: v,
+            itemStyle: { color: v >= 0 ? TOKENS.up : TOKENS.down, borderRadius: [2, 2, 0, 0] },
+          })),
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          barWidth: "55%",
+          // 0 零线（--grid-strong）
+          markLine: {
+            symbol: "none" as const,
+            silent: true,
+            label: { show: false },
+            lineStyle: { color: TOKENS.gridStrong, width: 1 },
+            data: [{ yAxis: 0 }],
+          },
+        },
       ],
     };
-  }, [dates, spot, futures, premium]);
+  }, [dates, spot, futures, basis, premium]);
 
   if (dates.length < 2 || spot.length < 2) return null;
 

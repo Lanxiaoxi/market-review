@@ -103,6 +103,7 @@ export interface IfBasisData {
   dates: string[];    // "YYYY-MM-DD"（升序）
   spot: number[];     // 现货指数收盘
   futures: number[];  // 中金所主力合约收盘
+  basis: number[];    // 基差（点）= 现货 - 期货
   premium: number[];  // 基差率 % = (futures - spot) / spot * 100
 }
 

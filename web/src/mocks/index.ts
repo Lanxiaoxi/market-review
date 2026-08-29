@@ -116,6 +116,7 @@ function genIfBasisMock(n = 40, base = 4600, contract = "IF", name = "沪深300"
     dates,
     spot,
     futures,
+    basis: futures.map((f, i) => Math.round((spot[i] - f) * 100) / 100),
     premium: futures.map((f, i) => Math.round(((f - spot[i]) / spot[i]) * 1000) / 1000),
   };
 }

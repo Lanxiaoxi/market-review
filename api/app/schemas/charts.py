@@ -40,6 +40,7 @@ class IfBasisOut(BaseModel):
     dates: list[str]     # "YYYY-MM-DD"（升序）
     spot: list[float]    # 现货指数收盘
     futures: list[float] # 中金所主力合约收盘
+    basis: list[float]   # 基差（点）= 现货 - 期货
     premium: list[float] # 基差率 % = (futures - spot) / spot * 100
 
 

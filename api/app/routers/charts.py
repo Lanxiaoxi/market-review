@@ -71,12 +71,14 @@ async def get_futures_basis(
         raise HTTPException(502, "期现数据为空，请稍后重试")
 
     premium = [round((f - s) / s * 100, 3) for s, f in zip(spot, futures)]
+    basis = [round(s - f, 2) for s, f in zip(spot, futures)]  # 基差（点）= 现货 - 期货
     payload = {
         "contract": key,
         "name": FUTURES_CONTRACTS[key]["name"],
         "dates": dates,
         "spot": spot,
         "futures": futures,
+        "basis": basis,
         "premium": premium,
     }
     charts_cache.set(cache_key, payload, DEFAULT_TTL)
