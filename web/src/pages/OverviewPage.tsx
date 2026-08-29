@@ -59,6 +59,14 @@ function sessionLabels(n: number): string[] {
   return Array.from({ length: n }, (_, i) => all[Math.round(i * step)]);
 }
 
+/** 成交额统一显示为「xxx亿」：后端可能返回 "2.12万亿"，这里转成 "21200亿" */
+function turnoverToYi(turnover?: string): string {
+  if (!turnover) return "—";
+  const m = turnover.match(/^([\d.]+)万亿$/);
+  if (m) return `${Math.round(parseFloat(m[1]) * 10000).toLocaleString("zh-CN")}亿`;
+  return turnover; // 后端已是 "xxxx亿" 格式
+}
+
 /** 钉选图表的迷你渲染（按 type 区分） */
 function MiniChart({ type }: { type: string }) {
   if (type === "barDist") {
@@ -299,25 +307,17 @@ export default function OverviewPage() {
             <span style={{ fontSize: 12, color: "var(--down)" }}>下跌 {data?.breadth.downPct}%</span>
           </div>
           <div style={{ height: 1, background: "var(--border)" }} />
-          {/* 成交额（关键）：独立成行、大数值 */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+          {/* 成交额（关键）：居中显示，统一「xxx亿」格式 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
             <span style={{ fontSize: 12, color: "var(--muted)" }}>成交额</span>
-            <span className="num" style={{ fontSize: 20, fontWeight: 600, color: "var(--ink)" }}>{data?.breadth.turnover ?? "—"}</span>
+            <span className="num" style={{ fontSize: 22, fontWeight: 600, color: "var(--ink)" }}>{turnoverToYi(data?.breadth.turnover)}</span>
           </div>
           {/* 涨停跌停（次级）：语义色，位于成交额之后 */}
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "center" }}>
             <span style={{ fontSize: 13, color: "var(--up)" }}>涨停 {data?.breadth.limitUpCount ?? "—"}</span>
             <span style={{ fontSize: 13, color: "var(--muted)" }}>·</span>
             <span style={{ fontSize: 13, color: "var(--down)" }}>跌停 {data?.breadth.limitDownCount ?? "—"}</span>
           </div>
-          <div style={{ height: 1, background: "var(--border)" }} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>涨停 TOP</span>
-          {(data?.breadth.limitUpTop ?? []).map((s) => (
-            <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 12, color: "var(--ink)", width: 64 }}>{s.name}</span>
-              <span className="num" style={{ fontSize: 12, fontWeight: 500, color: "var(--up)" }}>+{s.pct.toFixed(2)}%</span>
-            </div>
-          ))}
         </BaseCard>
       </div>
 
