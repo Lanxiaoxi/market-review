@@ -16,7 +16,7 @@ async def test_overview_schema():
 
     data = await build_overview()
     assert isinstance(data, OverviewOut)
-    assert len(data.indices) == 8
+    assert len(data.indices) == 10
     assert data.breadth.up > 0
     assert len(data.sectors_up) == 5
     assert len(data.sectors_down) == 5
@@ -59,7 +59,7 @@ async def test_overview_endpoint():
         resp = await client.get("/api/overview")
         assert resp.status_code == 200
         body = resp.json()
-        assert len(body["indices"]) == 8
+        assert len(body["indices"]) == 10
         assert body["breadth"]["limitUpCount"] == 48
 
 

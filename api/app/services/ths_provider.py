@@ -26,16 +26,20 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://fuyao.aicubes.cn"
 
-# 指数代码映射：与 tushare_provider.INDEX_CODES 对齐（HSI 由腾讯兜底）
+# 指数代码映射：与 tushare_provider.INDEX_CODES 对齐（港股指数由腾讯兜底）
 INDEX_CODES = {
     "000001.SH": ("000001", "上证指数"),
-    "399001.SZ": ("399001", "深证成指"),
-    "399006.SZ": ("399006", "创业板指"),
-    "000688.SH": ("000688", "科创50"),
+    "000016.SH": ("000016", "上证50"),
     "000300.SH": ("000300", "沪深300"),
     "000905.SH": ("000905", "中证500"),
+    "399006.SZ": ("399006", "创业板指"),
+    "000688.SH": ("000688", "科创50"),
     "000852.SH": ("000852", "中证1000"),
+    "932000.CSI": ("932000", "中证2000"),
 }
+
+# 港股指数（腾讯兜底，THS 无）
+HK_INDEX_CODES = ["HSI", "HSTECH"]
 
 # 同花顺一级行业指数前缀（行业目录含多级，板块页只展示一级）
 THS_INDUSTRY_PREFIX = "881"
@@ -197,15 +201,16 @@ class ThsProvider(BaseProvider):
                 "sparkline": _normalize_sparkline(closes_map.get(ts_code, [])),
             })
 
-        # 恒生指数：THS 无 HSI → 腾讯兜底
-        try:
-            from app.services.tencent_provider import fetch_hsi_snapshot
+        # 港股指数（恒生指数/恒生科技）：THS 无 → 腾讯兜底
+        for hk_code in HK_INDEX_CODES:
+            try:
+                from app.services.tencent_provider import fetch_hk_snapshot
 
-            hsi = await fetch_hsi_snapshot()
-            if hsi:
-                result.append(hsi)
-        except Exception as e:  # noqa: BLE001
-            logger.warning("[THS] HSI 腾讯兜底失败: %s", e)
+                hk = await fetch_hk_snapshot(hk_code)
+                if hk:
+                    result.append(hk)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("[THS] %s 腾讯兜底失败: %s", hk_code, e)
         return result
 
     async def fetch_breadth(self) -> dict:

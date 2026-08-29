@@ -1,6 +1,6 @@
 """
 腾讯接口兜底（免费）
-- 恒生指数实时快照 + 日 K（Tushare 无 HSI）
+- 港股指数（恒生指数/恒生科技）实时快照 + 日 K（Tushare 无港股指数）
 - 指数分时分钟线：web.ifzq.gtimg.cn/appstock/app/minute/query
 - 盘中实时快照：qt.gtimg.cn
 """
@@ -17,9 +17,10 @@ from app.services.provider import BaseProvider
 
 logger = logging.getLogger(__name__)
 
-# 腾讯行情代码映射
-TENCENT_INDEX_CODES = {
-    "HSI": "r_hkHSI",   # 恒生指数
+# 港股指数代码映射：逻辑码 → (腾讯实时代码, 腾讯日K代码, 展示名)
+HK_INDICES = {
+    "HSI": {"qt": "r_hkHSI", "kline": "hkHSI", "name": "恒生指数"},
+    "HSTECH": {"qt": "r_hkHSTECH", "kline": "hkHSTECH", "name": "恒生科技"},
 }
 
 
@@ -35,15 +36,18 @@ def _parse_qt_response(text: str, code_keys: list[str]) -> dict[str, list[str]]:
     return result
 
 
-async def fetch_hsi_kline(days: int = 12) -> list[float] | None:
-    """拉取恒生指数日 K 收盘价（真实 sparkline 数据源）"""
-    url = f"https://web.ifzq.gtimg.cn/appstock/app/kline/kline?param=hkHSI,day,,,{days}"
+async def fetch_hk_kline(code: str, days: int = 12) -> list[float] | None:
+    """拉取港股指数日 K 收盘价（真实 sparkline 数据源），code: HSI / HSTECH"""
+    cfg = HK_INDICES.get(code)
+    if cfg is None:
+        return None
+    url = f"https://web.ifzq.gtimg.cn/appstock/app/kline/kline?param={cfg['kline']},day,,,{days}"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(url)
             resp.raise_for_status()
             data = resp.json()
-            node = data.get("data", {}).get("hkHSI", {})
+            node = data.get("data", {}).get(cfg["kline"], {})
             # day 或 qfqday：每行 [date, open, close, high, low, amount]
             rows = node.get("qfqday") or node.get("day") or []
             closes = _parse_kline_rows(rows)
@@ -51,51 +55,55 @@ async def fetch_hsi_kline(days: int = 12) -> list[float] | None:
                 return None
             return closes
     except Exception as e:
-        logger.warning("[Tencent] HSI kline failed: %s", e)
+        logger.warning("[Tencent] %s kline failed: %s", code, e)
         return None
 
 
-async def fetch_hsi_snapshot() -> dict | None:
+async def fetch_hk_snapshot(code: str) -> dict | None:
     """
-    拉取恒生指数实时快照（腾讯兜底）
+    拉取港股指数实时快照（腾讯兜底），code: HSI / HSTECH
     返回格式与 tushare index_daily 一致；sparkline 用真实日 K，失败回退 mock
     """
-    tencent_code = "r_hkHSI"
-    url = f"https://qt.gtimg.cn/q={tencent_code}"
+    cfg = HK_INDICES.get(code)
+    if cfg is None:
+        return None
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(url)
+            resp = await client.get(f"https://qt.gtimg.cn/q={cfg['qt']}")
             resp.encoding = "gbk"
-            parsed = _parse_qt_response(resp.text, [tencent_code])
-            if tencent_code not in parsed:
+            parsed = _parse_qt_response(resp.text, [cfg["qt"]])
+            if cfg["qt"] not in parsed:
                 return None
-            fields = parsed[tencent_code]
-            # 腾讯恒指字段: [1]=名称 [3]=现价 [4]=昨收 [31]=涨跌额 [32]=涨跌幅%
+            fields = parsed[cfg["qt"]]
+            # 腾讯港股字段: [1]=名称 [3]=现价 [4]=昨收 [31]=涨跌额 [32]=涨跌幅%
             if len(fields) < 33:
                 return None
             value = float(fields[3])
             change = float(fields[31])
             pct = float(fields[32])
 
-            # sparkline：真实日 K（归一化），失败时回退 mock
-            closes = await fetch_hsi_kline(days=12)
+            # sparkline：真实日 K（归一化），失败时回退 mock（按名称查）
+            closes = await fetch_hk_kline(code, days=12)
             if closes:
                 from app.services.tushare_provider import _normalize_sparkline
 
                 sparkline = _normalize_sparkline(closes)
             else:
-                sparkline = MOCK_DATA["indices"][7]["sparkline"]
+                sparkline = next(
+                    (i["sparkline"] for i in MOCK_DATA["indices"] if i["name"] == cfg["name"]),
+                    [14] * 12,
+                )
 
             return {
-                "code": "HSI",
-                "name": "恒生指数",
+                "code": code,
+                "name": cfg["name"],
                 "value": round(value, 2),
                 "change": round(change, 2),
                 "change_pct": round(pct, 2),
                 "sparkline": sparkline,
             }
     except Exception as e:
-        logger.warning("[Tencent] HSI snapshot failed: %s", e)
+        logger.warning("[Tencent] %s snapshot failed: %s", code, e)
         return None
 
 

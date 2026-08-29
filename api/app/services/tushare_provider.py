@@ -74,19 +74,20 @@ def _recent_trade_dates(pro, end_date: str, n: int) -> list[str]:
     return [end_date]
 
 
-# ─── 指数代码映射 ───
+# ─── 指数代码映射（主页指数卡顺序：上证→上证50→沪深300→中证500→创业→科创50→中证1000→中证2000）───
 INDEX_CODES = {
     "000001.SH": ("000001", "上证指数"),
-    "399001.SZ": ("399001", "深证成指"),
-    "399006.SZ": ("399006", "创业板指"),
-    "000688.SH": ("000688", "科创50"),
+    "000016.SH": ("000016", "上证50"),
     "000300.SH": ("000300", "沪深300"),
     "000905.SH": ("000905", "中证500"),
+    "399006.SZ": ("399006", "创业板指"),
+    "000688.SH": ("000688", "科创50"),
     "000852.SH": ("000852", "中证1000"),
+    "932000.CSI": ("932000", "中证2000"),
 }
 
-# 恒生指数用腾讯兜底（Tushare 无 HSI）
-HSI_CODE = ("HSI", "恒生指数")
+# 港股指数用腾讯兜底（Tushare 无港股指数）
+HK_INDEX_CODES = ["HSI", "HSTECH"]
 
 
 def _normalize_sparkline(values: list[float], target_min=4, target_max=24) -> list[float]:
@@ -168,15 +169,16 @@ async def fetch_index_daily() -> list[dict]:
 
     indices = await asyncio.to_thread(_fetch)
 
-    # 恒生指数用腾讯兜底（真实日 K 生成 sparkline，失败则回退 mock）
-    try:
-        from app.services.tencent_provider import fetch_hsi_snapshot
+    # 港股指数（恒生指数/恒生科技）用腾讯兜底（真实日 K 生成 sparkline，失败则回退 mock）
+    for hk_code in HK_INDEX_CODES:
+        try:
+            from app.services.tencent_provider import fetch_hk_snapshot
 
-        hsi = await fetch_hsi_snapshot()
-        if hsi:
-            indices.append(hsi)
-    except Exception as e:
-        logger.warning("[Tencent] HSI fallback failed: %s", e)
+            hk = await fetch_hk_snapshot(hk_code)
+            if hk:
+                indices.append(hk)
+        except Exception as e:
+            logger.warning("[Tencent] %s 兜底失败: %s", hk_code, e)
 
     return indices
 

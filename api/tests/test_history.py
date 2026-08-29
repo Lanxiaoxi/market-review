@@ -37,7 +37,7 @@ async def test_snapshot_upsert_and_query():
         assert resp.status_code == 200
         body = resp.json()
         assert body["date"] == today
-        assert len(body["indices"]) == 8
+        assert len(body["indices"]) == 10
 
 
 @pytest.mark.asyncio
