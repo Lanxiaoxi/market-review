@@ -29,9 +29,17 @@ export default function IntradayChart({
       },
       yAxis: {
         type: "value" as const,
+        scale: true,
         splitLine: { lineStyle: { color: TOKENS.grid } },
+        axisLabel: {
+          fontSize: 11,
+          formatter: (v: number) => `${v}%`,
+        },
       },
-      series: series.map((s) => ({
+      tooltip: {
+        valueFormatter: (v: unknown) => `${v}%`,
+      },
+      series: series.map((s, i) => ({
         type: "line" as const,
         name: s.name,
         data: s.data,
@@ -39,6 +47,18 @@ export default function IntradayChart({
         symbol: "none",
         lineStyle: { width: 2, color: s.color, cap: "round" as const, join: "round" as const },
         itemStyle: { color: s.color },
+        // 零线（--grid-strong）：首条系列上画一条 0% 基准线，对齐原型设计
+        ...(i === 0
+          ? {
+              markLine: {
+                symbol: "none" as const,
+                silent: true,
+                label: { show: false },
+                lineStyle: { color: TOKENS.gridStrong, width: 1 },
+                data: [{ yAxis: 0 }],
+              },
+            }
+          : {}),
       })),
     }),
     [series, timeLabels]

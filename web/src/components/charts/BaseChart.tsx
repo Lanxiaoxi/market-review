@@ -6,6 +6,7 @@ import {
   GridComponent,
   TooltipComponent,
   LegendComponent,
+  MarkLineComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import type { EChartsOption, EChartsInstance } from "echarts-for-react";
@@ -18,6 +19,7 @@ echarts.use([
   GridComponent,
   TooltipComponent,
   LegendComponent,
+  MarkLineComponent,
   CanvasRenderer,
 ]);
 

@@ -28,11 +28,14 @@ const INDEX_SERIES = [
   { name: "创业板指", code: "399006", tencent: "sz399006", color: TOKENS.seriesPurple },
 ];
 
-/** 归一化到 200~40 区间（ECharts y 值，越高越靠上） */
-function norm(src: number[]): number[] {
-  const min = Math.min(...src);
-  const max = Math.max(...src);
-  return src.map((v) => 200 - ((v - min) / (max - min || 1)) * 160);
+/**
+ * 归一化为「相对首个点的涨跌幅（%）」：三条指数线共享同一比例尺，可真实对比。
+ * （替代旧的独立 min-max 归一化——那会把 ±0.05% 的上证拉成和 ±0.85% 的创业板一样高，且 Y 轴显示无意义数值）
+ */
+function toPctChange(src: number[]): number[] {
+  if (!src.length) return [];
+  const base = src[0] || 1;
+  return src.map((v) => ((v - base) / base) * 100);
 }
 
 /** 后端/腾讯分时不可用时：用该指数 sparkline 推导示意曲线（按序加确定性偏移，避免三条线重合） */
@@ -114,20 +117,20 @@ export default function OverviewPage() {
   const todaySeries = INDEX_SERIES.map((def, i) => {
     const intra = intraday?.codes[def.tencent];
     if (intra && intra.prices.length > 0) {
-      return { name: def.name, data: norm(intra.prices), color: def.color };
+      return { name: def.name, data: toPctChange(intra.prices), color: def.color };
     }
     const spark = idxByCode(def.code)?.sparkline ?? [24, 20, 16, 18, 12, 14, 9, 11, 7, 8, 5, 6];
-    return { name: def.name, data: norm(mockTodayPoints(spark, i)), color: def.color };
+    return { name: def.name, data: toPctChange(mockTodayPoints(spark, i)), color: def.color };
   });
 
   const series5d = INDEX_SERIES.map((def) => ({
     name: def.name,
-    data: norm(idxByCode(def.code)?.sparkline.slice(-5) ?? [14, 14, 14, 14, 14]),
+    data: toPctChange(idxByCode(def.code)?.sparkline.slice(-5) ?? [14, 14, 14, 14, 14]),
     color: def.color,
   }));
   const series20d = INDEX_SERIES.map((def) => ({
     name: def.name,
-    data: norm(idxByCode(def.code)?.sparkline ?? [14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14]),
+    data: toPctChange(idxByCode(def.code)?.sparkline ?? [14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14]),
     color: def.color,
   }));
 
