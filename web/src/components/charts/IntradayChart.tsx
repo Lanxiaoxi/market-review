@@ -37,6 +37,11 @@ export default function IntradayChart({
         },
       },
       tooltip: {
+        // 注意：此处覆写会整体替换 baseChartOption 的 tooltip，必须补全 trigger 与样式
+        trigger: "axis" as const,
+        backgroundColor: "#fff",
+        borderColor: TOKENS.gridStrong,
+        textStyle: { color: TOKENS.ink },
         valueFormatter: (v: unknown) => `${v}%`,
       },
       series: series.map((s, i) => ({
