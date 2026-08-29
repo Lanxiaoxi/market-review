@@ -1,0 +1,68 @@
+/* 行情表格 */
+.headerRow {
+  display: flex;
+  align-items: center;
+  padding-bottom: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+}
+
+.cell {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---- 列宽 ---- */
+.colName {
+  width: 120px;
+}
+
+.colPct {
+  width: 80px;
+  text-align: right;
+}
+
+.colLeader {
+  flex: 1;
+}
+
+.colSpark {
+  width: 120px;
+  text-align: right;
+}
+
+/* ---- 数据行内文字 ---- */
+.rowName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.rowLeader {
+  font-size: 13px;
+  color: var(--muted-strong);
+}
+
+.rowPct {
+  font-size: 13px;
+  font-weight: 500;
+  text-align: right;
+  width: 80px;
+}
+
+.up {
+  color: var(--up);
+}
+
+.down {
+  color: var(--down);
+}
+
+.rowSpark {
+  width: 120px;
+  height: 24px;
+}

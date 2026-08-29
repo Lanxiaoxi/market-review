@@ -1,0 +1,18 @@
+[Unit]
+Description=Market Review API (FastAPI + uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/market-review/api
+EnvironmentFile=/var/www/market-review/api/.env
+# uv 已系统级安装（/usr/local/bin/uv）；ExecStart 用 /bin/sh -c 让 PATH 解析 uv 位置
+# 若你的 uv 不在 /usr/local/bin，请改为实际路径（如 /home/<user>/.local/bin/uv）
+ExecStartPre=/bin/sh -c 'uv sync --frozen'
+ExecStart=/bin/sh -c 'exec uv run uvicorn app.main:app --host 127.0.0.1 --port 8000'
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

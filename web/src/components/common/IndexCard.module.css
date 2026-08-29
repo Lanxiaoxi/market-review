@@ -1,0 +1,40 @@
+/* 指数卡：162px 宽 */
+.card {
+  width: 162px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.name {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.value {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.change {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.up {
+  color: var(--up);
+}
+
+.down {
+  color: var(--down);
+}
+
+.sparkline {
+  width: 100%;
+  height: 28px;
+}

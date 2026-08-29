@@ -1,0 +1,13 @@
+# 构建上下文排除：避免本地 venv/node_modules 覆盖镜像内产物、防止 .env 泄入镜像层
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+**/data
+**/.git
+**/.gitignore

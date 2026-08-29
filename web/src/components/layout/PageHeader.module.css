@@ -1,0 +1,35 @@
+/* 页面标题栏 */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pageSub {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.date {
+  font-size: 13px;
+  color: var(--muted);
+}

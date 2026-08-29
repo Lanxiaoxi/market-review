@@ -1,0 +1,21 @@
+/* 状态 chip */
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--r-pill);
+  background: var(--chip-bg);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--down);
+}
+
+.text {
+  font-size: 12px;
+  color: var(--muted-strong);
+}

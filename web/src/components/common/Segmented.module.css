@@ -1,0 +1,28 @@
+/* 分段控件容器 */
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--r-seg);
+  background: var(--chip-bg);
+}
+
+/* 段 */
+.seg {
+  padding: 5px 10px;
+  border-radius: var(--r-seg-inner);
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+/* 选中段：白底 + 深色文字 600 */
+.segActive {
+  background: #fff;
+  color: var(--ink);
+  font-weight: 500;
+}

@@ -1,0 +1,17 @@
+/* 占位卡：120-150px，居中图标+文字 */
+.card {
+  height: 120px;
+  background: var(--placeholder);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.text {
+  font-size: 12px;
+  color: var(--muted);
+}

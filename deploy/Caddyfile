@@ -1,0 +1,26 @@
+# Caddy 反代配置：/ → 前端静态，/api → FastAPI（同域无 CORS）
+# 部署到 VPS 后替换 your-domain.com
+# 提示：修改后执行 caddy reload 生效
+
+your-domain.com {
+    encode zstd gzip
+
+    # 前端静态资源（vite build 产物）
+    root * /var/www/market-review/web/dist
+    try_files {path} /index.html
+
+    # 带 hash 的静态资源长缓存；index.html 不缓存（保证 SPA 更新即时可见）
+    header @hashed Cache-Control "public, max-age=31536000, immutable"
+    @hashed path_regexp \.([0-9a-f]{8,})\.(js|css|svg|png|woff2?)$
+    header /index.html Cache-Control "no-cache"
+
+    # 后端 API 反向代理
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    # 静态文件
+    handle {
+        file_server
+    }
+}

@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>收盘复盘 · 个人复盘仪表盘</title>
+<style>
+  :root {
+    /* 颜色 tokens —— 严格对应设计稿 */
+    --ink: #1d1d1f;
+    --muted: #7a7a7a;
+    --muted-strong: #333333;
+    --accent: #0066cc;
+    --up: #d04545;
+    --down: #2f9e6e;
+    --bg-content: #f5f5f7;
+    --bg-sidebar: #fafafc;
+    --card: #ffffff;
+    --border: #ececef;
+    --active-bg: #eef4fb;
+    --chip-bg: #f2f3f5;
+    --icon: #5a5a60;
+    --grid: #f2f2f4;
+    --grid-strong: #e8e8ec;
+    --bar-fill: #e8eef7;
+    --series-purple: #8e6cc9;
+    --series-base: #c7c7cc;
+    --avatar-bg: #dbeafe;
+    --placeholder: #fafafc;
+    --placeholder-icon: #a0a0a8;
+
+    /* 圆角 */
+    --r-card: 12px;
+    --r-nav: 10px;
+    --r-seg: 8px;
+    --r-seg-inner: 6px;
+    --r-pill: 9999px;
+
+    --font-sans: "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+      -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font-sans);
+    color: var(--ink);
+    background: var(--bg-content);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 数字等宽 */
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+  /* ===== 应用骨架 ===== */
+  .app { display: flex; min-height: 100vh; }
+
+  /* ===== 侧边导航栏 ===== */
+  .sidebar {
+    width: 240px;
+    flex: 0 0 240px;
+    background: var(--bg-sidebar);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0 20px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 20px;
+  }
+  .brand svg { flex: 0 0 auto; }
+  .brand-title { font-size: 16px; font-weight: 600; color: var(--ink); }
+
+  .nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 20px 12px 0;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--r-nav);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    text-align: left;
+    font-family: inherit;
+    transition: background-color 0.15s ease;
+  }
+  .nav-item:hover { background: #f2f4f8; }
+  .nav-item.active { background: var(--active-bg); }
+  .nav-icon { flex: 0 0 auto; display: flex; }
+  .nav-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .nav-title { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.2; }
+  .nav-sub { font-size: 10px; font-weight: 400; color: var(--muted); line-height: 1.2; white-space: nowrap; }
+  .nav-item.active .nav-title { color: var(--accent); }
+
+  .sidebar-spacer { height: 24px; }
+
+  .user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px 0;
+    margin-top: auto;
+  }
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 9999px;
+    background: var(--avatar-bg);
+    display: flex; align-items: center; justify-content: center;
+    flex: 0 0 auto;
+  }
+  .user-stack { display: flex; flex-direction: column; gap: 1px; }
+  .user-name { font-size: 13px; font-weight: 500; color: var(--ink); line-height: 1.2; }
+  .user-sub { font-size: 10px; font-weight: 400; color: var(--muted); line-height: 1.2; }
+
+  /* ===== 内容区 ===== */
+  .content {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg-content);
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .page { display: none; flex-direction: column; gap: 24px; }
+  .page.active { display: flex; }
+
+  /* ===== 页面标题栏 ===== */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left { display: flex; flex-direction: column; gap: 4px; }
+  .page-title { font-size: 22px; font-weight: 600; color: var(--ink); }
+  .page-sub { font-size: 13px; font-weight: 400; color: var(--muted); }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .date { font-size: 13px; color: var(--muted); }
+  .chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: var(--r-pill);
+    background: var(--chip-bg);
+  }
+  .chip-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--down); }
+  .chip-text { font-size: 12px; color: var(--muted-strong); }
+  .btn-export {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: var(--r-pill);
+    background: var(--accent); color: #fff;
+    font-size: 13px; font-weight: 500; font-family: inherit;
+    border: none; cursor: pointer;
+    transition: transform 0.1s ease;
+  }
+  .btn-export:active { transform: scale(0.96); }
+
+  /* ===== 卡片通用 ===== */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+  }
+
+  /* ===== 指数卡片网格 ===== */
+  .index-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .index-card {
+    width: 162px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .idx-name { font-size: 13px; color: var(--muted); }
+  .idx-value { font-size: 19px; font-weight: 600; color: var(--ink); }
+  .idx-change { font-size: 13px; font-weight: 500; }
+  .idx-change.up { color: var(--up); }
+  .idx-change.down { color: var(--down); }
+  .sparkline { width: 100%; height: 28px; }
+
+  /* ===== 图表行 ===== */
+  .charts-row { display: flex; gap: 16px; align-items: stretch; }
+  .chart-card {
+    flex: 0 0 968px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .card-sub { font-size: 12px; color: var(--muted); }
+  .segmented {
+    display: inline-flex; gap: 2px; padding: 3px;
+    border-radius: var(--r-seg); background: var(--chip-bg);
+  }
+  .seg {
+    padding: 5px 10px; border-radius: var(--r-seg-inner);
+    font-size: 12px; color: var(--muted); background: transparent;
+    border: none; cursor: pointer; font-family: inherit;
+    white-space: nowrap;
+  }
+  .seg.active { background: #fff; color: var(--ink); font-weight: 500; }
+  .legend { display: flex; gap: 16px; align-items: center; }
+  .legend-item { font-size: 12px; }
+  .legend-item.l-1 { color: var(--ink); }
+  .legend-item.l-2 { color: var(--accent); }
+  .legend-item.l-3 { color: var(--series-purple); }
+  .chart-svg { width: 100%; height: auto; display: block; }
+  .time-axis {
+    display: flex; justify-content: space-between;
+    padding: 0 32px 0 36px;
+  }
+  .time-axis span { font-size: 11px; color: var(--muted); }
+
+  /* ===== 市场宽度卡片 ===== */
+  .breadth-card {
+    flex: 1 1 auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .stats { display: flex; justify-content: space-between; }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat-value { font-size: 22px; font-weight: 600; }
+  .stat-value.up { color: var(--up); }
+  .stat-value.down { color: var(--down); }
+  .stat-value.flat { color: var(--muted-strong); }
+  .stat-label { font-size: 12px; color: var(--muted); }
+  .breadth-bar { width: 100%; height: 18px; display: block; }
+  .bar-legend { display: flex; gap: 12px; align-items: center; }
+  .bar-legend .lg-up { font-size: 12px; color: var(--up); }
+  .bar-legend .lg-flat { font-size: 12px; color: var(--muted); }
+  .bar-legend .lg-down { font-size: 12px; color: var(--down); }
+  .breadth-footer {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .turnover { font-size: 13px; color: var(--ink); }
+  .limit-counts { font-size: 13px; color: var(--muted); }
+  .divider { height: 1px; background: var(--border); }
+  .limitup-title { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .limitup-row { display: flex; align-items: center; gap: 10px; }
+  .limitup-row .name { font-size: 12px; color: var(--ink); width: 64px; }
+  .limitup-row .value { font-size: 12px; font-weight: 500; color: var(--up); }
+
+  /* ===== 表格 ===== */
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .t-header-row {
+    display: flex; align-items: center; padding-bottom: 8px;
+  }
+  .t-row {
+    display: flex; align-items: center; padding: 10px 0;
+  }
+  .t-cell { font-size: 12px; color: var(--muted); }
+  .t-row .c-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .t-row .c-leader { font-size: 13px; color: var(--muted-strong); }
+  .t-row .c-pct { font-size: 13px; font-weight: 500; }
+  .c-pct.up { color: var(--up); }
+  .c-pct.down { color: var(--down); }
+  .col-name { width: 120px; }
+  .col-pct { width: 80px; text-align: right; }
+  .col-leader { flex: 1; }
+  .col-spark { width: 120px; text-align: right; }
+  .row-spark { width: 120px; height: 24px; }
+
+  /* ===== 汇总卡 ===== */
+  .summary-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: 20px 24px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .metric { display: flex; flex-direction: column; gap: 4px; }
+  .metric-value { font-size: 24px; font-weight: 600; }
+  .metric-value.up { color: var(--up); }
+  .metric-label { font-size: 12px; color: var(--muted); }
+
+  /* ===== 自选池 ===== */
+  .watch-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .w-header-row { display: flex; align-items: center; padding-bottom: 8px; }
+  .w-row { display: flex; align-items: center; padding: 10px 0; }
+  .w-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .w-price { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .w-pct { font-size: 13px; font-weight: 500; }
+  .w-pct.up { color: var(--up); }
+  .w-pct.down { color: var(--down); }
+  .w-pnl { font-size: 13px; font-weight: 500; }
+  .w-pnl.up { color: var(--up); }
+  .w-pnl.down { color: var(--down); }
+
+  /* ===== 策略画板 ===== */
+  .canvas-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .strategy-svg { width: 100%; height: auto; display: block; }
+  .placeholder-card {
+    background: var(--placeholder);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    height: 120px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px;
+  }
+  .placeholder-text { font-size: 12px; color: var(--muted); }
+
+  /* ===== 页脚 ===== */
+  .footer { padding-top: 4px; }
+  .footer-text { font-size: 12px; color: var(--muted); }
+
+  /* ===== 行业板块表现 ===== */
+  .sector-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .sector-cols { display: flex; gap: 32px; }
+  .sector-col { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .sector-label { font-size: 12px; font-weight: 600; }
+  .sector-label.up { color: var(--up); }
+  .sector-label.down { color: var(--down); }
+  .sector-row { display: flex; align-items: center; gap: 10px; }
+  .s-name { width: 68px; font-size: 12px; color: var(--ink); flex: 0 0 auto; }
+  .s-bar { height: 8px; border-radius: 4px; }
+  .s-bar.up { background: var(--up); }
+  .s-bar.down { background: var(--down); }
+  .s-value { font-size: 12px; font-weight: 500; }
+  .s-value.up { color: var(--up); }
+  .s-value.down { color: var(--down); }
+
+  /* ===== 自定义图表页 · 一行两卡 ===== */
+  .custom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* ===== 我的图表 ===== */
+  .chart-slots { display: flex; gap: 12px; }
+  .chart-slot {
+    position: relative;
+    flex: 1; height: 150px;
+    background: var(--placeholder);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  }
+  .slot-pinned {
+    position: absolute; top: 8px; right: 8px;
+    display: flex; align-items: center; gap: 5px;
+    padding: 3px 8px; border-radius: var(--r-pill);
+    background: var(--chip-bg);
+    font-size: 12px; color: var(--muted-strong);
+  }
+  .slot-pinned .pin-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="app">
+    <!-- ===== 侧边导航栏 ===== -->
+    <aside class="sidebar">
+      <div class="brand">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2.5 15.5 L6.5 9.5 L10 12.5 L13.5 6 L17.5 8" stroke="#0066cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="brand-title">收盘复盘</span>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-page="overview">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="2" width="6" height="6" rx="1.5" fill="#5a5a60"/>
+              <rect x="10" y="2" width="6" height="6" rx="1.5" fill="#5a5a60"/>
+              <rect x="2" y="10" width="6" height="6" rx="1.5" fill="#5a5a60"/>
+              <rect x="10" y="10" width="6" height="6" rx="1.5" fill="#5a5a60"/>
+            </svg>
+          </span>
+          <span class="nav-text">
+            <span class="nav-title">今日总览</span>
+            <span class="nav-sub">3秒扫盘 · 把握全局</span>
+          </span>
+        </button>
+
+        <button class="nav-item" data-page="indicator">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.5 13.5 A6.5 6.5 0 0 1 15.5 13.5" stroke="#5a5a60" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+              <circle cx="9" cy="13" r="1.2" fill="#5a5a60"/>
+              <line x1="9" y1="13" x2="12.5" y2="7" stroke="#5a5a60" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="nav-text">
+            <span class="nav-title">自定义图表</span>
+            <span class="nav-sub">我的行情统计图表</span>
+          </span>
+        </button>
+
+        <button class="nav-item" data-page="sector">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="9" width="3.2" height="6" rx="0.8" fill="#5a5a60"/>
+              <rect x="6.4" y="6" width="3.2" height="9" rx="0.8" fill="#5a5a60"/>
+              <rect x="10.8" y="3" width="3.2" height="12" rx="0.8" fill="#5a5a60"/>
+            </svg>
+          </span>
+          <span class="nav-text">
+            <span class="nav-title">板块轮动</span>
+            <span class="nav-sub">捕捉当日热点与异动</span>
+          </span>
+        </button>
+
+        <button class="nav-item" data-page="holding">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <polygon points="9,2 10.6,6.3 15.2,6.5 11.6,9.3 12.8,13.8 9,11.2 5.2,13.8 6.4,9.3 2.8,6.5 7.4,6.3" fill="#5a5a60"/>
+            </svg>
+          </span>
+          <span class="nav-text">
+            <span class="nav-title">自选跟踪</span>
+            <span class="nav-sub">聚焦自选与盈亏贡献</span>
+          </span>
+        </button>
+
+        <button class="nav-item" data-page="canvas">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="3" width="14" height="12" rx="2" stroke="#5a5a60" stroke-width="1.3" fill="none"/>
+              <polyline points="4.5,11 7.5,8 10,10 13.5,5" stroke="#5a5a60" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="nav-text">
+            <span class="nav-title">策略画板</span>
+            <span class="nav-sub">承载自制图表与深度分析</span>
+          </span>
+        </button>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="user">
+        <span class="avatar">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8" cy="5.5" r="3" fill="#ffffff"/>
+            <rect x="3" y="9.5" width="10" height="5" rx="2.5" fill="#ffffff"/>
+          </svg>
+        </span>
+        <span class="user-stack">
+          <span class="user-name">李复盘</span>
+          <span class="user-sub">个人复盘空间</span>
+        </span>
+      </div>
+    </aside>
+
+    <!-- ===== 内容区 ===== -->
+    <main class="content">
+
+      <!-- 页面1：今日总览 -->
+      <section class="page active" id="page-overview">
+        <div class="header">
+          <div class="header-left">
+            <h1 class="page-title">今日总览</h1>
+            <p class="page-sub">3秒扫盘 · 把握全局 · 关键数字与微缩趋势</p>
+          </div>
+          <div class="header-right">
+            <span class="date">2026年8月26日 · 周三</span>
+            <span class="chip"><span class="chip-dot"></span><span class="chip-text">已收盘</span></span>
+            <button class="btn-export">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 2.5 L8 9.5 M5 6.5 L8 9.5 L11 6.5 M3 13 L13 13" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              导出报告
+            </button>
+          </div>
+        </div>
+
+        <div class="index-grid">
+          <div class="index-card">
+            <span class="idx-name">上证指数</span>
+            <span class="idx-value num">3,356.21</span>
+            <span class="idx-change up num">+18.45&nbsp;&nbsp;+0.55%</span>
+            <svg class="sparkline" viewBox="0 0 134 28" fill="none"><polyline points="2,24 14,22 26,23 38,18 50,20 62,16 74,17 86,12 98,14 110,9 122,11 132,6" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="index-card">
+            <span class="idx-name">深证成指</span>
+            <span class="idx-value num">10,842.67</span>
+            <span class="idx-change up num">+86.12&nbsp;&nbsp;+0.80%</span>
+            <svg class="sparkline" viewBox="0 0 134 28" fill="none"><polyline points="2,26 14,23 26,25 38,20 50,21 62,15 74,16 86,10 98,12 110,7 122,8 132,3" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="index-card">
+            <span class="idx-name">创业板指</span>
+            <span class="idx-value num">2,245.30</span>
+            <span class="idx-change up num">+22.18&nbsp;&nbsp;+1.00%</span>
+            <svg class="sparkline" viewBox="0 0 134 28" fill="none"><polyline points="2,25 14,24 26,22 38,23 50,17 62,19 74,14 86,16 98,10 110,12 122,7 132,5" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="index-card">
+            <span class="idx-name">科创50</span>
+            <span class="idx-value num">1,012.45</span>
+            <span class="idx-change down num">-4.32&nbsp;&nbsp;-0.42%</span>
+            <svg class="sparkline" viewBox="0 0 134 28" fill="none"><polyline points="2,6 14,9 26,7 38,12 50,11 62,16 74,15 86,19 98,17 110,22 122,21 132,26" stroke="#2f9e6e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="index-card">
+            <span class="idx-name">沪深300</span>
+            <span class="idx-value num">3,985.20</span>
+            <span class="idx-change up num">+23.10&nbsp;&nbsp;+0.58%</span>
+            <svg class="sparkline" viewBox="0 0 134 28" fill="none"><polyline points="2,25 14,24 26,22 38,23 50,17 62,19 74,14 86,16 98,10 110,12 122,7 132,5" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="index-card">
+            <span class="idx-name">中证500</span>
+            <span class="idx-value num">6,124.88</span>
+            <span class="idx-change up num">+35.66&nbsp;&nbsp;+0.59%</span>
+            <svg class="sparkline" viewBox="0 0 134 28" fill="none"><polyline points="2,26 14,23 26,25 38,20 50,21 62,15 74,16 86,10 98,12 110,7 122,8 132,3" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="index-card">
+            <span class="idx-name">中证1000</span>
+            <span class="idx-value num">6,890.42</span>
+            <span class="idx-change down num">-28.15&nbsp;&nbsp;-0.41%</span>
+            <svg class="sparkline" viewBox="0 0 134 28" fill="none"><polyline points="2,8 14,6 26,10 38,9 50,14 62,13 74,18 86,16 98,20 110,19 122,24 132,27" stroke="#2f9e6e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="index-card">
+            <span class="idx-name">恒生指数</span>
+            <span class="idx-value num">19,876.54</span>
+            <span class="idx-change up num">+142.30&nbsp;&nbsp;+0.72%</span>
+            <svg class="sparkline" viewBox="0 0 134 28" fill="none"><polyline points="2,24 14,22 26,23 38,18 50,20 62,16 74,17 86,12 98,14 110,9 122,11 132,6" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+
+        <div class="charts-row">
+          <div class="chart-card">
+            <div class="card-head">
+              <span class="card-title">指数分时对比</span>
+              <div class="segmented">
+                <button class="seg active">今日</button>
+                <button class="seg">近5日</button>
+                <button class="seg">近20日</button>
+              </div>
+            </div>
+            <div class="legend">
+              <span class="legend-item l-1">上证指数</span>
+              <span class="legend-item l-2">沪深300</span>
+              <span class="legend-item l-3">创业板指</span>
+            </div>
+            <svg class="chart-svg" width="928" height="216" viewBox="0 0 928 216" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="36" y="12" width="860" height="1" fill="#f2f2f4"/>
+              <rect x="36" y="52" width="860" height="1" fill="#f2f2f4"/>
+              <rect x="36" y="92" width="860" height="1" fill="#f2f2f4"/>
+              <rect x="36" y="132" width="860" height="1" fill="#e8e8ec"/>
+              <rect x="36" y="172" width="860" height="1" fill="#f2f2f4"/>
+              <rect x="36" y="212" width="860" height="1" fill="#f2f2f4"/>
+              <polyline points="36,132 132,117 228,142 324,127 420,104 516,110 612,97 708,90 804,94 896,77" stroke="#1d1d1f" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="36,132 132,112 228,137 324,120 420,97 516,102 612,84 708,77 804,82 896,74" stroke="#0066cc" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="36,132 132,97 228,122 324,87 420,70 516,77 612,52 708,40 804,47 896,32" stroke="#8e6cc9" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="time-axis">
+              <span>09:30</span><span>10:30</span><span>13:00</span><span>14:00</span><span>15:00</span>
+            </div>
+          </div>
+
+          <div class="breadth-card">
+            <span class="card-title">市场宽度</span>
+            <div class="stats">
+              <div class="stat"><span class="stat-value up num">3,186</span><span class="stat-label">上涨</span></div>
+              <div class="stat"><span class="stat-value down num">1,652</span><span class="stat-label">下跌</span></div>
+              <div class="stat"><span class="stat-value flat num">208</span><span class="stat-label">平盘</span></div>
+            </div>
+            <svg class="breadth-bar" viewBox="0 0 360 18" fill="none">
+              <rect x="0" y="0" width="227" height="18" fill="#d04545"/>
+              <rect x="227" y="0" width="14" height="18" fill="#c7c7cc"/>
+              <rect x="241" y="0" width="119" height="18" fill="#2f9e6e"/>
+            </svg>
+            <div class="bar-legend">
+              <span class="lg-up">上涨 63%</span>
+              <span class="lg-flat">平盘 4%</span>
+              <span class="lg-down">下跌 33%</span>
+            </div>
+            <div class="breadth-footer">
+              <span class="turnover">成交额 1.26万亿</span>
+              <span class="limit-counts">涨停 48 · 跌停 6</span>
+            </div>
+            <div class="divider"></div>
+            <span class="limitup-title">涨停 TOP</span>
+            <div class="limitup-row"><span class="name">寒武纪</span><span class="value num">+20.01%</span></div>
+            <div class="limitup-row"><span class="name">沪电股份</span><span class="value num">+10.00%</span></div>
+            <div class="limitup-row"><span class="name">中科曙光</span><span class="value num">+10.00%</span></div>
+            <div class="limitup-row"><span class="name">工业富联</span><span class="value num">+10.00%</span></div>
+            <div class="limitup-row"><span class="name">紫光股份</span><span class="value num">+10.00%</span></div>
+          </div>
+        </div>
+
+        <div class="sector-card">
+          <div class="card-head">
+            <span class="card-title">行业板块表现</span>
+            <span class="card-sub">申万二级行业 · 领涨/领跌 TOP5 · 单位 %</span>
+          </div>
+          <div class="sector-cols">
+            <div class="sector-col">
+              <span class="sector-label up">领涨 TOP5</span>
+              <div class="sector-row"><span class="s-name">半导体</span><span class="s-bar up" style="width:95px"></span><span class="s-value up num">+2.86%</span></div>
+              <div class="sector-row"><span class="s-name">消费电子</span><span class="s-bar up" style="width:80px"></span><span class="s-value up num">+2.41%</span></div>
+              <div class="sector-row"><span class="s-name">汽车零部件</span><span class="s-bar up" style="width:64px"></span><span class="s-value up num">+1.92%</span></div>
+              <div class="sector-row"><span class="s-name">医疗服务</span><span class="s-bar up" style="width:52px"></span><span class="s-value up num">+1.55%</span></div>
+              <div class="sector-row"><span class="s-name">通信设备</span><span class="s-bar up" style="width:43px"></span><span class="s-value up num">+1.28%</span></div>
+            </div>
+            <div class="sector-col">
+              <span class="sector-label down">领跌 TOP5</span>
+              <div class="sector-row"><span class="s-name">煤炭</span><span class="s-bar down" style="width:61px"></span><span class="s-value down num">-1.84%</span></div>
+              <div class="sector-row"><span class="s-name">银行</span><span class="s-bar down" style="width:44px"></span><span class="s-value down num">-1.32%</span></div>
+              <div class="sector-row"><span class="s-name">房地产</span><span class="s-bar down" style="width:32px"></span><span class="s-value down num">-0.95%</span></div>
+              <div class="sector-row"><span class="s-name">钢铁</span><span class="s-bar down" style="width:29px"></span><span class="s-value down num">-0.88%</span></div>
+              <div class="sector-row"><span class="s-name">电力</span><span class="s-bar down" style="width:21px"></span><span class="s-value down num">-0.62%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sector-card">
+          <div class="card-head">
+            <span class="card-title">我的图表</span>
+            <span class="card-sub">从自定义图表页选择 · 钉选展示</span>
+          </div>
+          <div class="chart-slots">
+            <div class="chart-slot">
+              <span class="slot-pinned"><span class="pin-dot"></span>已钉选</span>
+              <svg width="150" height="48" viewBox="0 0 150 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2" y="40" width="14" height="4" fill="#d04545"/>
+                <rect x="20" y="33" width="14" height="11" fill="#d04545"/>
+                <rect x="38" y="12" width="14" height="32" fill="#d04545"/>
+                <rect x="56" y="39" width="14" height="5" fill="#c7c7cc"/>
+                <rect x="74" y="25" width="14" height="19" fill="#2f9e6e"/>
+                <rect x="92" y="38" width="14" height="6" fill="#2f9e6e"/>
+                <rect x="110" y="42" width="14" height="2" fill="#2f9e6e"/>
+              </svg>
+              <span class="placeholder-text">涨跌家数分布</span>
+            </div>
+            <div class="chart-slot">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="9" y="4" width="2" height="12" rx="1" fill="#a0a0a8"/><rect x="4" y="9" width="12" height="2" rx="1" fill="#a0a0a8"/></svg>
+              <span class="placeholder-text">选择图表</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer"><span class="footer-text">数据为示意样例，仅供界面设计参考 · 行情按 A 股惯例红涨绿跌 · 更新时间 15:00</span></div>
+      </section>
+
+      <!-- 页面2：自定义图表 -->
+      <section class="page" id="page-indicator">
+        <div class="header">
+          <div class="header-left">
+            <h1 class="page-title">自定义图表</h1>
+            <p class="page-sub">我的行情统计图表</p>
+          </div>
+          <div class="header-right"><span class="date">2026年8月26日 · 周三</span></div>
+        </div>
+
+        <div class="custom-grid">
+          <div class="canvas-card">
+            <div class="card-head">
+              <span class="card-title">涨跌家数分布</span>
+              <span class="card-sub">全市场涨跌区间统计 · 单位 家</span>
+            </div>
+            <div class="legend">
+              <span class="legend-item" style="color:#d04545">上涨区间</span>
+              <span class="legend-item" style="color:#7a7a7a">平盘</span>
+              <span class="legend-item" style="color:#2f9e6e">下跌区间</span>
+            </div>
+            <svg class="strategy-svg" width="640" height="300" viewBox="0 0 640 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="36" y="40" width="584" height="1" fill="#f2f2f4"/>
+              <rect x="36" y="90" width="584" height="1" fill="#f2f2f4"/>
+              <rect x="36" y="140" width="584" height="1" fill="#f2f2f4"/>
+              <rect x="36" y="190" width="584" height="1" fill="#f2f2f4"/>
+              <rect x="36" y="240" width="584" height="1" fill="#e8e8ec"/>
+              <rect x="36" y="230" width="56" height="10" fill="#d04545"/>
+              <rect x="116" y="206" width="56" height="34" fill="#d04545"/>
+              <rect x="196" y="40" width="56" height="200" fill="#d04545"/>
+              <rect x="276" y="224" width="56" height="16" fill="#c7c7cc"/>
+              <rect x="356" y="134" width="56" height="106" fill="#2f9e6e"/>
+              <rect x="436" y="223" width="56" height="17" fill="#2f9e6e"/>
+              <rect x="516" y="236" width="56" height="4" fill="#2f9e6e"/>
+              <text x="64" y="222" font-size="12" fill="#333333" text-anchor="middle">48</text>
+              <text x="144" y="198" font-size="12" fill="#333333" text-anchor="middle">456</text>
+              <text x="224" y="32" font-size="12" fill="#333333" text-anchor="middle">2,682</text>
+              <text x="304" y="216" font-size="12" fill="#333333" text-anchor="middle">208</text>
+              <text x="384" y="126" font-size="12" fill="#333333" text-anchor="middle">1,418</text>
+              <text x="464" y="215" font-size="12" fill="#333333" text-anchor="middle">226</text>
+              <text x="544" y="228" font-size="12" fill="#333333" text-anchor="middle">8</text>
+              <text x="64" y="262" font-size="12" fill="#d04545" text-anchor="middle">涨停</text>
+              <text x="144" y="262" font-size="12" fill="#d04545" text-anchor="middle">涨2-10%</text>
+              <text x="224" y="262" font-size="12" fill="#d04545" text-anchor="middle">涨0-2%</text>
+              <text x="304" y="262" font-size="12" fill="#7a7a7a" text-anchor="middle">平盘</text>
+              <text x="384" y="262" font-size="12" fill="#2f9e6e" text-anchor="middle">跌0-2%</text>
+              <text x="464" y="262" font-size="12" fill="#2f9e6e" text-anchor="middle">跌2-10%</text>
+              <text x="544" y="262" font-size="12" fill="#2f9e6e" text-anchor="middle">跌停</text>
+            </svg>
+          </div>
+
+          <div class="canvas-card">
+            <div class="card-head">
+              <span class="card-title">成交额分时</span>
+              <span class="card-sub">分时量能节奏 · 单位 亿元</span>
+            </div>
+            <div class="legend">
+              <span class="legend-item" style="color:#7a7a7a">区间成交额</span>
+              <span class="legend-item l-2">累计成交额</span>
+            </div>
+            <svg class="strategy-svg" width="640" height="300" viewBox="0 0 640 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="36" y="40" width="584" height="1" fill="#f2f2f4"/>
+              <rect x="36" y="90" width="584" height="1" fill="#f2f2f4"/>
+              <rect x="36" y="140" width="584" height="1" fill="#f2f2f4"/>
+              <rect x="36" y="190" width="584" height="1" fill="#f2f2f4"/>
+              <rect x="36" y="240" width="584" height="1" fill="#e8e8ec"/>
+              <rect x="40" y="168" width="28" height="72" fill="#e8eef7"/>
+              <rect x="88" y="186" width="28" height="54" fill="#e8eef7"/>
+              <rect x="136" y="198" width="28" height="42" fill="#e8eef7"/>
+              <rect x="184" y="206" width="28" height="34" fill="#e8eef7"/>
+              <rect x="232" y="214" width="28" height="26" fill="#e8eef7"/>
+              <rect x="280" y="224" width="28" height="16" fill="#e8eef7"/>
+              <rect x="328" y="220" width="28" height="20" fill="#e8eef7"/>
+              <rect x="376" y="212" width="28" height="28" fill="#e8eef7"/>
+              <rect x="424" y="204" width="28" height="36" fill="#e8eef7"/>
+              <rect x="472" y="196" width="28" height="44" fill="#e8eef7"/>
+              <rect x="520" y="182" width="28" height="58" fill="#e8eef7"/>
+              <rect x="568" y="152" width="28" height="88" fill="#e8eef7"/>
+              <polyline points="54,218 102,204 150,194 198,186 246,180 294,175 342,168 390,160 438,150 486,138 534,122 582,96" stroke="#0066cc" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <text x="54" y="160" font-size="12" fill="#333333" text-anchor="middle">128</text>
+              <text x="582" y="144" font-size="12" fill="#333333" text-anchor="middle">186</text>
+              <text x="54" y="262" font-size="12" fill="#7a7a7a" text-anchor="middle">09:30</text>
+              <text x="198" y="262" font-size="12" fill="#7a7a7a" text-anchor="middle">10:30</text>
+              <text x="342" y="262" font-size="12" fill="#7a7a7a" text-anchor="middle">13:00</text>
+              <text x="486" y="262" font-size="12" fill="#7a7a7a" text-anchor="middle">14:00</text>
+              <text x="582" y="262" font-size="12" fill="#7a7a7a" text-anchor="middle">15:00</text>
+            </svg>
+          </div>
+        </div>
+
+        <div class="placeholder-card">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="9" y="4" width="2" height="12" rx="1" fill="#a0a0a8"/>
+            <rect x="4" y="9" width="12" height="2" rx="1" fill="#a0a0a8"/>
+          </svg>
+          <span class="placeholder-text">从图表库添加图表</span>
+        </div>
+      </section>
+
+      <!-- 页面3：板块轮动 -->
+      <section class="page" id="page-sector">
+        <div class="header">
+          <div class="header-left">
+            <h1 class="page-title">板块轮动</h1>
+            <p class="page-sub">捕捉当日热点与异动 · 申万一级行业涨跌排名</p>
+          </div>
+          <div class="header-right"><span class="date">2026年8月26日 · 周三</span></div>
+        </div>
+
+        <div class="table-card">
+          <div class="card-head">
+            <span class="card-title">申万一级行业 · 涨跌排名</span>
+            <span class="card-sub">按涨跌幅排序 · 单位 %</span>
+          </div>
+          <div class="t-header-row">
+            <span class="t-cell col-name">板块</span>
+            <span class="t-cell col-pct">涨跌幅</span>
+            <span class="t-cell col-leader">领涨股</span>
+            <span class="t-cell col-spark">5日走势</span>
+          </div>
+          <div class="t-row">
+            <span class="c-name col-name">电子</span>
+            <span class="c-pct up col-pct num">+2.86%</span>
+            <span class="c-leader col-leader">寒武纪</span>
+            <svg class="row-spark col-spark" viewBox="0 0 120 24" fill="none"><polyline points="2,18 14,16 26,17 38,13 50,14 62,10 74,11 86,7 98,9 110,6 118,5" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="t-row">
+            <span class="c-name col-name">计算机</span>
+            <span class="c-pct up col-pct num">+2.41%</span>
+            <span class="c-leader col-leader">中科曙光</span>
+            <svg class="row-spark col-spark" viewBox="0 0 120 24" fill="none"><polyline points="2,19 14,17 26,18 38,14 50,15 62,11 74,12 86,8 98,10 110,7 118,6" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="t-row">
+            <span class="c-name col-name">汽车</span>
+            <span class="c-pct up col-pct num">+1.92%</span>
+            <span class="c-leader col-leader">比亚迪</span>
+            <svg class="row-spark col-spark" viewBox="0 0 120 24" fill="none"><polyline points="2,20 14,18 26,19 38,16 50,17 62,13 74,14 86,11 98,12 110,9 118,8" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="t-row">
+            <span class="c-name col-name">银行</span>
+            <span class="c-pct down col-pct num">-1.32%</span>
+            <span class="c-leader col-leader">招商银行</span>
+            <svg class="row-spark col-spark" viewBox="0 0 120 24" fill="none"><polyline points="2,6 14,8 26,7 38,11 50,10 62,14 74,13 86,17 98,16 110,19 118,20" stroke="#2f9e6e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="t-row">
+            <span class="c-name col-name">煤炭</span>
+            <span class="c-pct down col-pct num">-1.84%</span>
+            <span class="c-leader col-leader">中国神华</span>
+            <svg class="row-spark col-spark" viewBox="0 0 120 24" fill="none"><polyline points="2,7 14,9 26,8 38,12 50,11 62,15 74,14 86,18 98,17 110,20 118,21" stroke="#2f9e6e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </section>
+
+      <!-- 页面4：自选跟踪 -->
+      <section class="page" id="page-holding">
+        <div class="header">
+          <div class="header-left">
+            <h1 class="page-title">自选跟踪</h1>
+            <p class="page-sub">聚焦自选与盈亏贡献 · 我的自选池</p>
+          </div>
+          <div class="header-right"><span class="date">2026年8月26日 · 周三</span></div>
+        </div>
+
+        <div class="summary-card">
+          <div class="metric"><span class="metric-value num">128.6万</span><span class="metric-label">总市值</span></div>
+          <div class="metric"><span class="metric-value up num">+2.4万</span><span class="metric-label">今日盈亏</span></div>
+          <div class="metric"><span class="metric-value up num">+18.2万</span><span class="metric-label">持仓盈亏</span></div>
+          <div class="metric"><span class="metric-value num">82%</span><span class="metric-label">仓位</span></div>
+        </div>
+
+        <div class="watch-card">
+          <div class="card-head">
+            <span class="card-title">自选池</span>
+            <span class="card-sub">当日分时 · 盈亏贡献</span>
+          </div>
+          <div class="w-header-row">
+            <span class="t-cell col-name">股票</span>
+            <span class="t-cell" style="width:100px;text-align:right">现价（元）</span>
+            <span class="t-cell" style="width:80px;text-align:right">涨跌幅</span>
+            <span class="t-cell" style="width:100px;text-align:right">今日盈亏（万）</span>
+            <span class="t-cell col-spark">分时走势</span>
+          </div>
+          <div class="w-row">
+            <span class="w-name col-name">寒武纪</span>
+            <span class="w-price num" style="width:100px;text-align:right">588.00</span>
+            <span class="w-pct up num" style="width:80px;text-align:right">+20.01%</span>
+            <span class="w-pnl up num" style="width:100px;text-align:right">+4.9万</span>
+            <svg class="row-spark col-spark" viewBox="0 0 120 24" fill="none"><polyline points="2,18 14,15 26,17 38,12 50,14 62,8 74,10 86,6 98,8 110,4 118,3" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="w-row">
+            <span class="w-name col-name">比亚迪</span>
+            <span class="w-price num" style="width:100px;text-align:right">245.60</span>
+            <span class="w-pct up num" style="width:80px;text-align:right">+1.92%</span>
+            <span class="w-pnl up num" style="width:100px;text-align:right">+0.5万</span>
+            <svg class="row-spark col-spark" viewBox="0 0 120 24" fill="none"><polyline points="2,19 14,17 26,18 38,14 50,15 62,11 74,12 86,9 98,10 110,7 118,6" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="w-row">
+            <span class="w-name col-name">招商银行</span>
+            <span class="w-price num" style="width:100px;text-align:right">38.20</span>
+            <span class="w-pct down num" style="width:80px;text-align:right">-1.32%</span>
+            <span class="w-pnl down num" style="width:100px;text-align:right">-2.5万</span>
+            <svg class="row-spark col-spark" viewBox="0 0 120 24" fill="none"><polyline points="2,6 14,8 26,7 38,11 50,10 62,14 74,13 86,17 98,16 110,19 118,20" stroke="#2f9e6e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="w-row">
+            <span class="w-name col-name">贵州茅台</span>
+            <span class="w-price num" style="width:100px;text-align:right">1,520.00</span>
+            <span class="w-pct up num" style="width:80px;text-align:right">+0.45%</span>
+            <span class="w-pnl up num" style="width:100px;text-align:right">+0.1万</span>
+            <svg class="row-spark col-spark" viewBox="0 0 120 24" fill="none"><polyline points="2,20 14,18 26,19 38,16 50,17 62,13 74,14 86,11 98,12 110,9 118,8" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="w-row">
+            <span class="w-name col-name">宁德时代</span>
+            <span class="w-price num" style="width:100px;text-align:right">210.30</span>
+            <span class="w-pct up num" style="width:80px;text-align:right">+0.80%</span>
+            <span class="w-pnl up num" style="width:100px;text-align:right">+0.2万</span>
+            <svg class="row-spark col-spark" viewBox="0 0 120 24" fill="none"><polyline points="2,19 14,17 26,18 38,14 50,15 62,12 74,13 86,9 98,11 110,8 118,7" stroke="#d04545" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </section>
+
+      <!-- 页面5：策略画板 -->
+      <section class="page" id="page-canvas">
+        <div class="header">
+          <div class="header-left">
+            <h1 class="page-title">策略画板</h1>
+            <p class="page-sub">承载自制图表与深度分析 · 全屏宽幅画布</p>
+          </div>
+          <div class="header-right"><span class="date">2026年8月26日 · 周三</span></div>
+        </div>
+
+        <div class="canvas-card">
+          <div class="card-head">
+            <span class="card-title">自定义策略曲线</span>
+            <span class="card-sub">策略收益 vs 沪深300 · 含成交量</span>
+          </div>
+          <svg class="strategy-svg" width="1300" height="300" viewBox="0 0 1300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="40" y="60" width="1200" height="1" fill="#f2f2f4"/>
+            <rect x="40" y="110" width="1200" height="1" fill="#f2f2f4"/>
+            <rect x="40" y="160" width="1200" height="1" fill="#f2f2f4"/>
+            <rect x="40" y="210" width="1200" height="1" fill="#e8e8ec"/>
+            <rect x="40" y="230" width="48" height="30" fill="#e8eef7"/>
+            <rect x="140" y="215" width="48" height="45" fill="#e8eef7"/>
+            <rect x="240" y="235" width="48" height="25" fill="#e8eef7"/>
+            <rect x="340" y="200" width="48" height="60" fill="#e8eef7"/>
+            <rect x="440" y="210" width="48" height="50" fill="#e8eef7"/>
+            <rect x="540" y="190" width="48" height="70" fill="#e8eef7"/>
+            <rect x="640" y="220" width="48" height="40" fill="#e8eef7"/>
+            <rect x="740" y="195" width="48" height="65" fill="#e8eef7"/>
+            <rect x="840" y="205" width="48" height="55" fill="#e8eef7"/>
+            <rect x="940" y="180" width="48" height="80" fill="#e8eef7"/>
+            <rect x="1040" y="215" width="48" height="45" fill="#e8eef7"/>
+            <rect x="1140" y="225" width="48" height="35" fill="#e8eef7"/>
+            <polyline points="40,150 103,138 166,145 229,128 292,132 355,118 418,124 481,105 544,112 607,95 670,88 733,92 796,78 859,70 922,74 985,60 1048,66 1111,52 1174,58 1240,55" stroke="#0066cc" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="40,150 103,146 166,148 229,140 292,142 355,135 418,138 481,128 544,131 607,122 670,126 733,118 796,120 859,112 922,115 985,108 1048,110 1111,104 1174,107 1240,105" stroke="#c7c7cc" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var navItems = document.querySelectorAll('.nav-item');
+      var pages = document.querySelectorAll('.page');
+      navItems.forEach(function (item) {
+        item.addEventListener('click', function () {
+          navItems.forEach(function (i) { i.classList.remove('active'); });
+          pages.forEach(function (p) { p.classList.remove('active'); });
+          item.classList.add('active');
+          var target = document.getElementById('page-' + item.dataset.page);
+          if (target) target.classList.add('active');
+        });
+      });
+
+      // 分段控件：只在本卡内切换周期，不联动其他区块
+      document.querySelectorAll('.segmented').forEach(function (seg) {
+        seg.addEventListener('click', function (e) {
+          var btn = e.target.closest('.seg');
+          if (!btn) return;
+          seg.querySelectorAll('.seg').forEach(function (s) { s.classList.remove('active'); });
+          btn.classList.add('active');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
