@@ -46,7 +46,9 @@ def _latest_trade_date(pro) -> Optional[str]:
             is_open="1",
         )
         if df is not None and len(df) > 0:
-            return str(df.iloc[-1]["cal_date"])
+            # trade_cal 返回顺序不保证（实测为降序），按 cal_date 升序排序后取最后一个
+            dates = sorted(str(d) for d in df["cal_date"].tolist())
+            return dates[-1]
     except Exception as e:
         logger.warning("[Tushare] trade_cal failed: %s", e)
     # fallback: 用今天或昨天（周一到周五）
@@ -293,17 +295,35 @@ def _get_sw_classify(pro, trade_date: str) -> list[tuple[str, str]]:
 
 
 def _get_sw_members(pro, trade_date: str) -> dict[str, dict[str, str]]:
-    """申万一级行业成分股 {index_code: {ts_code: con_name}}，按日缓存"""
+    """申万一级行业成分股 {index_code: {ts_code: con_name}}，按日缓存
+
+    注意：index_member 返回的列在不同环境/权限下可能没有 con_name，
+    此时用 stock_basic 的 ts_code→name 映射兜底，避免 KeyError 导致领涨股恒为空。
+    """
     if _sw_members_cache["date"] == trade_date and _sw_members_cache["members"]:
         return _sw_members_cache["members"]
     members: dict[str, dict[str, str]] = {}
+    name_map: dict[str, str] = {}
     try:
         classify = _get_sw_classify(pro, trade_date)
         for index_code, _ in classify:
             try:
                 df = pro.index_member(index_code=index_code)
                 if df is not None and len(df) > 0:
-                    members[index_code] = dict(zip(df["con_code"].tolist(), df["con_name"].tolist()))
+                    codes = df["con_code"].tolist()
+                    if "con_name" in df.columns:
+                        names = df["con_name"].tolist()
+                    else:
+                        # 兜底：index_member 无 con_name 列时，用 stock_basic 名称映射
+                        if not name_map:
+                            try:
+                                basic = pro.stock_basic(exchange="", list_status="L", fields="ts_code,name")
+                                if basic is not None and len(basic) > 0:
+                                    name_map = dict(zip(basic["ts_code"], basic["name"]))
+                            except Exception as e:
+                                logger.warning("[Tushare] stock_basic(name_map) failed: %s", e)
+                        names = [name_map.get(c, c.split(".")[0]) for c in codes]
+                    members[index_code] = dict(zip(codes, names))
             except Exception as e:
                 logger.warning("[Tushare] index_member %s 失败（可能无权限）: %s", index_code, e)
         _sw_members_cache.update(date=trade_date, members=members)
