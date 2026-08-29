@@ -38,5 +38,8 @@ export default function SparklineChart({
     [data, isUp]
   );
 
+  // 空数据防御：少于 2 个点无法成线（且 min/max 会算出 Infinity）
+  if (!data || data.length < 2) return null;
+
   return <BaseChart option={option} width={width} height={height} />;
 }

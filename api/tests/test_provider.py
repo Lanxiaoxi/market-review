@@ -16,8 +16,20 @@ from app.services.provider import (
     DOMAINS,
     fetch_domain,
     get_provider,
+    normalize_ts_code,
     _resolve_chain,
 )
+
+
+def test_normalize_ts_code():
+    """自选代码 → 标准 ts_code 规范化"""
+    assert normalize_ts_code("600519") == "600519.SH"
+    assert normalize_ts_code("000001") == "000001.SZ"
+    assert normalize_ts_code("300750") == "300750.SZ"
+    assert normalize_ts_code("688256") == "688256.SH"
+    assert normalize_ts_code("832000") == "832000.BJ"
+    assert normalize_ts_code("600519.sh") == "600519.SH"
+    assert normalize_ts_code("000858.SZ") == "000858.SZ"
 
 
 def test_mapping_config_valid():
@@ -34,6 +46,7 @@ def test_resolve_chain_order():
     assert _resolve_chain("indices") == ["tushare", "ths"]
     assert _resolve_chain("limit_up") == ["ths", "tushare"]
     assert _resolve_chain("intraday") == ["tencent"]
+    assert _resolve_chain("stock_sparkline") == ["ths", "tushare"]
 
 
 def test_get_provider_returns_configured_primary():

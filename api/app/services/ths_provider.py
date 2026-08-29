@@ -264,6 +264,24 @@ class ThsProvider(BaseProvider):
             for it in items
         ]
 
+    async def fetch_stock_sparkline(self, code: str) -> list[float]:
+        """单只个股近 30 天日 K 收盘价 → 归一化 sparkline（自选页分时走势）"""
+        from app.services.provider import normalize_ts_code
+
+        thscode = normalize_ts_code(code)
+        days = await self._calendar()
+        end_ms = days[-1]["date_ms"]
+        start_ms = end_ms - 31 * 86_400_000
+        d = await self._get(
+            "/api/a-share/prices/historical",
+            {"thscode": thscode, "interval": "1d", "start": start_ms, "end": end_ms},
+        )
+        bars = d.get("item") or []
+        if len(bars) < 2:
+            raise ProviderError(f"THS 股票 {thscode} 历史K线为空")
+        closes = [float(b["close_price"]) for b in bars]
+        return _normalize_sparkline(closes)
+
     async def fetch_sectors(self) -> list[dict]:
         """行业板块：THS 一级行业指数 K 线（pct + sparkline）+ 领涨股"""
         catalog_data = await self._get(

@@ -426,3 +426,24 @@ class TushareProvider(BaseProvider):
 
     async def fetch_sectors(self) -> list[dict]:
         return await fetch_sector_daily()
+
+    async def fetch_stock_sparkline(self, code: str) -> list[float]:
+        """单只个股近 12 个交易日收盘价 → 归一化 sparkline（自选页分时走势）"""
+        from app.services.provider import normalize_ts_code
+
+        ts_code = normalize_ts_code(code)
+
+        def _fetch() -> list[float]:
+            pro = _ensure_pro()
+            df = pro.daily(ts_code=ts_code, limit=12, fields="trade_date,close")
+            if df is None or len(df) == 0:
+                raise ProviderError(f"Tushare daily {ts_code} 为空")
+            df = df.sort_values("trade_date")  # daily 默认降序，先排序
+            return _normalize_sparkline([float(v) for v in df["close"].tolist()])
+
+        try:
+            return await asyncio.to_thread(_fetch)
+        except ProviderError:
+            raise
+        except Exception as e:
+            raise ProviderError(f"Tushare 个股 sparkline {ts_code} 失败: {e}")

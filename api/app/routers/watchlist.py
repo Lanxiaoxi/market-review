@@ -1,10 +1,14 @@
 """CRUD /api/watchlist —— 自选池 + 持仓盈亏（写接口受 API Token 保护）"""
 
+import asyncio
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 
 from app.auth import require_api_token
+from app.cache import stock_sparkline_cache, DEFAULT_TTL
 from app.models.db import get_session
 from app.models.watchlist import WatchlistItem
 from app.schemas.watchlist import (
@@ -14,8 +18,25 @@ from app.schemas.watchlist import (
     WatchlistCreateIn,
     WatchlistUpdateIn,
 )
+from app.services.provider import fetch_domain, DOMAIN_STOCK_SPARKLINE
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["自选"])
+
+
+async def _stock_sparkline(code: str) -> list[float]:
+    """个股分时走势 sparkline（按代码缓存 24h；数据源不可用时返回空数组，不阻塞列表）"""
+    cached = stock_sparkline_cache.get(code)
+    if cached is not None:
+        return cached
+    try:
+        data = await fetch_domain(DOMAIN_STOCK_SPARKLINE, code)
+    except Exception as e:  # noqa: BLE001 —— sparkline 是增强字段，失败不影响主数据
+        logger.warning("[Watchlist] 个股 %s sparkline 获取失败: %s", code, e)
+        return []
+    stock_sparkline_cache.set(code, data, DEFAULT_TTL)
+    return data
 
 
 def _item_out(r: WatchlistItem) -> WatchlistItemOut:
@@ -44,6 +65,11 @@ async def build_watchlist_response(session: AsyncSession) -> WatchlistResponse:
     rows = result.scalars().all()
 
     items = [_item_out(r) for r in rows]
+
+    # 分时走势 sparkline：并发补充（尽力而为，失败为空数组）
+    sparks = await asyncio.gather(*(_stock_sparkline(r.code) for r in rows))
+    for item, sp in zip(items, sparks):
+        item.sparkline = sp
 
     total_value = sum(r.holding_value for r in rows)
     today_pnl = sum(r.pnl for r in rows)

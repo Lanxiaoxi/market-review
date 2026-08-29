@@ -39,6 +39,7 @@ class TTLCache:
 overview_cache = TTLCache()
 sectors_cache = TTLCache()
 intraday_cache = TTLCache()
+stock_sparkline_cache = TTLCache()  # 自选页个股 sparkline（按代码缓存）
 
 # 收盘后 TTL 24h，盘中 60s
 DEFAULT_TTL = 60 * 60 * 24

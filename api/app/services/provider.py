@@ -26,6 +26,7 @@ DOMAIN_BREADTH = "breadth"      # 涨跌家数 / 7 档分布 / 成交额
 DOMAIN_LIMIT_UP = "limit_up"    # 涨停 TOP5 / 涨停池
 DOMAIN_SECTORS = "sectors"      # 板块轮动（行业排名 + 领涨股）
 DOMAIN_INTRADAY = "intraday"    # 指数当日分时
+DOMAIN_STOCK_SPARKLINE = "stock_sparkline"  # 单只个股近期收盘价 sparkline（自选页）
 
 DOMAINS = (
     DOMAIN_INDICES,
@@ -33,6 +34,7 @@ DOMAINS = (
     DOMAIN_LIMIT_UP,
     DOMAIN_SECTORS,
     DOMAIN_INTRADAY,
+    DOMAIN_STOCK_SPARKLINE,
 )
 
 # ─── 能力矩阵：每个域可用 Provider（按优先级排列，供 auto/降级使用）───
@@ -42,6 +44,7 @@ CAPABILITY: dict[str, list[str]] = {
     DOMAIN_LIMIT_UP: ["ths", "tushare"],     # ths 涨停池字段更全；tushare 用 daily 近似
     DOMAIN_SECTORS: ["ths", "tushare"],      # ths 行业指数；tushare sw_daily 需 2000 分
     DOMAIN_INTRADAY: ["tencent"],            # 唯一能力源（ths/tushare 无分钟线）
+    DOMAIN_STOCK_SPARKLINE: ["ths", "tushare"],
 }
 
 # ─── 硬编码映射表：每个数据域默认主源（必须属于该域能力矩阵）───
@@ -51,6 +54,7 @@ DOMAIN_PROVIDER: dict[str, str] = {
     DOMAIN_LIMIT_UP: "ths",
     DOMAIN_SECTORS: "ths",
     DOMAIN_INTRADAY: "tencent",
+    DOMAIN_STOCK_SPARKLINE: "ths",
 }
 
 # ─── 数据域 → 协议方法名（域命名与取数语义解耦）───
@@ -60,7 +64,20 @@ DOMAIN_METHOD: dict[str, str] = {
     DOMAIN_LIMIT_UP: "fetch_limit_top",
     DOMAIN_SECTORS: "fetch_sectors",
     DOMAIN_INTRADAY: "fetch_intraday",
+    DOMAIN_STOCK_SPARKLINE: "fetch_stock_sparkline",
 }
+
+
+def normalize_ts_code(code: str) -> str:
+    """把自选代码规范为带交易所后缀的标准代码（600519 → 600519.SH）"""
+    code = code.strip().upper()
+    if "." in code:
+        return code
+    if code.startswith(("6", "9")):
+        return f"{code}.SH"
+    if code.startswith(("4", "8", "92")):
+        return f"{code}.BJ"
+    return f"{code}.SZ"
 
 
 class ProviderError(Exception):
@@ -86,6 +103,9 @@ class BaseProvider:
 
     async def fetch_intraday(self, codes: list[str]) -> dict:
         raise ProviderError(f"{self.name} 不支持 intraday")
+
+    async def fetch_stock_sparkline(self, code: str) -> list[float]:
+        raise ProviderError(f"{self.name} 不支持 stock_sparkline")
 
 
 # ─── 注册表 ───

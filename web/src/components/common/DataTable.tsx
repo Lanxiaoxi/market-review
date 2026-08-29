@@ -34,6 +34,7 @@ export function RowSparkline({
   points: number[];
   isUp: boolean;
 }) {
+  if (!points || points.length < 2) return null; // 空数据不渲染（数据源不可用时列留空）
   return (
     <svg className={styles.rowSpark} viewBox="0 0 120 24" fill="none">
       <polyline
