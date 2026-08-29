@@ -96,10 +96,12 @@ export interface IntradayData {
   codes: Record<string, IntradaySeries>; // key = 腾讯代码，如 sh000001
 }
 
-/** 沪深300 期现对比（日线） */
+/** 股指期货期现对比（日线） */
 export interface IfBasisData {
+  contract: string;   // IF / IH / IM
+  name: string;       // 现货指数名称（沪深300 / 上证50 / 中证1000）
   dates: string[];    // "YYYY-MM-DD"（升序）
-  spot: number[];     // 沪深300 现货收盘
-  futures: number[];  // 中金所 IF 主力合约收盘
+  spot: number[];     // 现货指数收盘
+  futures: number[];  // 中金所主力合约收盘
   premium: number[];  // 基差率 % = (futures - spot) / spot * 100
 }

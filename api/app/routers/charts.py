@@ -11,9 +11,16 @@ from app.cache import charts_cache, DEFAULT_TTL
 from app.models.db import get_session
 from app.models.chart_config import ChartConfig
 from app.schemas.charts import ChartLibItemOut, ChartCreateIn, ChartUpdateIn, IfBasisOut
-from app.services.provider import fetch_domain, DOMAIN_INDEX_HISTORY, DOMAIN_IF_MAIN
+from app.services.provider import fetch_domain, DOMAIN_INDEX_HISTORY, DOMAIN_FUTURES_MAIN
 
 router = APIRouter(tags=["图表库"])
+
+# 中金所股指期货合约 → 现货指数
+FUTURES_CONTRACTS: dict[str, dict[str, str]] = {
+    "IF": {"spot": "000300.SH", "name": "沪深300"},
+    "IH": {"spot": "000016.SH", "name": "上证50"},
+    "IM": {"spot": "000852.SH", "name": "中证1000"},
+}
 
 
 def _align_series(
@@ -31,24 +38,44 @@ def _align_series(
     return dates, spot, futures
 
 
-@router.get("/charts/if-basis", response_model=IfBasisOut)
-async def get_if_basis(days: int = Query(60, ge=10, le=250)):
-    """沪深300 现货 vs 中金所 IF 主力合约（日线，基差率附随）"""
-    cache_key = f"if-basis:{days}"
+@router.get("/charts/futures-basis", response_model=IfBasisOut)
+async def get_futures_basis(
+    contract: str = Query("IF", description="中金所合约: IF(沪深300) / IH(上证50) / IM(中证1000)"),
+    days: int = Query(60, ge=10, le=250),
+):
+    """股指期货期现对比（日线）：现货指数 vs 中金所主力合约，基差率附随"""
+    key = contract.upper()
+    if key not in FUTURES_CONTRACTS:
+        raise HTTPException(422, f"不支持的合约: {contract}（可选 IF/IH/IM）")
+
+    cache_key = f"futures-basis:{key}:{days}"
     cached = charts_cache.get(cache_key)
     if cached is not None:
         return IfBasisOut(**cached)
 
-    spot_series = await fetch_domain(DOMAIN_INDEX_HISTORY, "000300.SH", days)
-    fut_series = await fetch_domain(DOMAIN_IF_MAIN, days)
+    spot_series = await fetch_domain(DOMAIN_INDEX_HISTORY, FUTURES_CONTRACTS[key]["spot"], days)
+    fut_series = await fetch_domain(DOMAIN_FUTURES_MAIN, key, days)
     dates, spot, futures = _align_series(spot_series, fut_series)
     if not dates:
         raise HTTPException(502, "期现数据为空，请稍后重试")
 
     premium = [round((f - s) / s * 100, 3) for s, f in zip(spot, futures)]
-    payload = {"dates": dates, "spot": spot, "futures": futures, "premium": premium}
+    payload = {
+        "contract": key,
+        "name": FUTURES_CONTRACTS[key]["name"],
+        "dates": dates,
+        "spot": spot,
+        "futures": futures,
+        "premium": premium,
+    }
     charts_cache.set(cache_key, payload, DEFAULT_TTL)
     return IfBasisOut(**payload)
+
+
+@router.get("/charts/if-basis", response_model=IfBasisOut, include_in_schema=False)
+async def get_if_basis_alias(days: int = Query(60, ge=10, le=250)):
+    """旧路径兼容：/charts/if-basis == /charts/futures-basis?contract=IF"""
+    return await get_futures_basis(contract="IF", days=days)
 
 
 @router.get("/charts", response_model=list[ChartLibItemOut])

@@ -6,10 +6,10 @@ export async function fetchCharts(): Promise<ChartLibItem[]> {
   return data;
 }
 
-/** 沪深300 期现对比（日线，近 days 个交易日） */
-export async function fetchIfBasis(days = 60): Promise<IfBasisData> {
-  const { data } = await apiClient.get<IfBasisData>("/charts/if-basis", {
-    params: { days },
+/** 股指期货期现对比（日线，近 days 个交易日；contract: IF/IH/IM） */
+export async function fetchFuturesBasis(contract: string, days = 60): Promise<IfBasisData> {
+  const { data } = await apiClient.get<IfBasisData>("/charts/futures-basis", {
+    params: { contract, days },
     timeout: 30_000,
   });
   return data;

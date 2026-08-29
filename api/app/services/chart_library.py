@@ -9,17 +9,19 @@ from app.models.chart_config import ChartConfig
 KNOWN_CHARTS: list[dict] = [
     {"chart_id": "bar-dist", "name": "涨跌家数分布", "chart_type": "barDist"},
     {"chart_id": "turnover-intraday", "name": "成交额分时", "chart_type": "turnoverIntraday"},
-    {"chart_id": "if-basis", "name": "沪深300期现对比", "chart_type": "ifBasis"},
+    {"chart_id": "if-basis", "name": "股指期现对比", "chart_type": "ifBasis"},
 ]
 
 
 async def seed_chart_library(session: AsyncSession) -> None:
-    """启动时调用：chart_id 不存在才插入（不覆盖用户已钉选状态）"""
+    """启动时调用：chart_id 不存在才插入；已存在的内置图表同步显示名（不覆盖钉选状态）"""
     for k in KNOWN_CHARTS:
-        dup = await session.execute(
-            select(ChartConfig).where(ChartConfig.chart_id == k["chart_id"])
-        )
-        if dup.scalar_one_or_none() is None:
+        row = (
+            await session.execute(
+                select(ChartConfig).where(ChartConfig.chart_id == k["chart_id"])
+            )
+        ).scalar_one_or_none()
+        if row is None:
             session.add(
                 ChartConfig(
                     chart_id=k["chart_id"],
@@ -28,4 +30,6 @@ async def seed_chart_library(session: AsyncSession) -> None:
                     pinned=False,
                 )
             )
+        elif row.name != k["name"]:
+            row.name = k["name"]  # 内置图表改名时同步存量行
     await session.commit()

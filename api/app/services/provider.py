@@ -28,7 +28,7 @@ DOMAIN_SECTORS = "sectors"      # 板块轮动（行业排名 + 领涨股）
 DOMAIN_INTRADAY = "intraday"    # 指数当日分时
 DOMAIN_STOCK_SPARKLINE = "stock_sparkline"  # 单只个股近期收盘价 sparkline（自选页）
 DOMAIN_INDEX_HISTORY = "index_history"      # 单个指数历史日 K 收盘价序列（期现对比等）
-DOMAIN_IF_MAIN = "if_main"                  # 中金所沪深300股指期货（IF）主力连续日线
+DOMAIN_FUTURES_MAIN = "futures_main"        # 中金所股指期货（IF/IH/IM）主力连续日线
 
 DOMAINS = (
     DOMAIN_INDICES,
@@ -38,7 +38,7 @@ DOMAINS = (
     DOMAIN_INTRADAY,
     DOMAIN_STOCK_SPARKLINE,
     DOMAIN_INDEX_HISTORY,
-    DOMAIN_IF_MAIN,
+    DOMAIN_FUTURES_MAIN,
 )
 
 # ─── 能力矩阵：每个域可用 Provider（按优先级排列，供 auto/降级使用）───
@@ -50,7 +50,7 @@ CAPABILITY: dict[str, list[str]] = {
     DOMAIN_INTRADAY: ["tencent"],            # 唯一能力源（ths/tushare 无分钟线）
     DOMAIN_STOCK_SPARKLINE: ["ths", "tushare"],
     DOMAIN_INDEX_HISTORY: ["tushare", "ths"],
-    DOMAIN_IF_MAIN: ["tushare"],             # 期货仅 Tushare 有（同花顺/腾讯均无）
+    DOMAIN_FUTURES_MAIN: ["tushare"],        # 期货仅 Tushare 有（同花顺/腾讯均无）
 }
 
 # ─── 硬编码映射表：每个数据域默认主源（必须属于该域能力矩阵）───
@@ -62,7 +62,7 @@ DOMAIN_PROVIDER: dict[str, str] = {
     DOMAIN_INTRADAY: "tencent",
     DOMAIN_STOCK_SPARKLINE: "ths",
     DOMAIN_INDEX_HISTORY: "tushare",
-    DOMAIN_IF_MAIN: "tushare",
+    DOMAIN_FUTURES_MAIN: "tushare",
 }
 
 # ─── 数据域 → 协议方法名（域命名与取数语义解耦）───
@@ -74,7 +74,7 @@ DOMAIN_METHOD: dict[str, str] = {
     DOMAIN_INTRADAY: "fetch_intraday",
     DOMAIN_STOCK_SPARKLINE: "fetch_stock_sparkline",
     DOMAIN_INDEX_HISTORY: "fetch_index_history",
-    DOMAIN_IF_MAIN: "fetch_if_main",
+    DOMAIN_FUTURES_MAIN: "fetch_futures_main",
 }
 
 
@@ -121,9 +121,9 @@ class BaseProvider:
         """单个指数历史日 K 收盘价：返回 [{"date": "YYYY-MM-DD", "close": float}, ...]（升序）"""
         raise ProviderError(f"{self.name} 不支持 index_history")
 
-    async def fetch_if_main(self, days: int) -> list[dict]:
-        """中金所沪深300股指期货（IF）主力连续日线：返回 [{"date": ..., "close": ...}, ...]（升序）"""
-        raise ProviderError(f"{self.name} 不支持 if_main")
+    async def fetch_futures_main(self, contract: str, days: int) -> list[dict]:
+        """中金所股指期货主力连续日线（contract: IF/IH/IM）：返回 [{"date": ..., "close": ...}, ...]（升序）"""
+        raise ProviderError(f"{self.name} 不支持 futures_main")
 
 
 # ─── 注册表 ───

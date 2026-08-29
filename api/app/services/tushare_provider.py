@@ -455,18 +455,23 @@ class TushareProvider(BaseProvider):
         except Exception as e:
             raise ProviderError(f"Tushare 指数历史 {ts_code} 失败: {e}")
 
-    async def fetch_if_main(self, days: int) -> list[dict]:
-        """中金所沪深300股指期货（IF）主力连续日线（升序）
+    async def fetch_futures_main(self, contract: str, days: int) -> list[dict]:
+        """中金所股指期货主力连续日线（contract: IF/IH/IM，升序）
 
         主力判断：fut_mapping 给出每个交易日的主力合约映射，
         再按映射合约取 fut_daily 收盘价拼成连续序列。
         """
+        contract = contract.upper()
+
         def _fetch() -> list[dict]:
             pro = _ensure_pro()
-            mapping = pro.fut_mapping(ts_code="IF.CFX")
+            mapping = pro.fut_mapping(ts_code=f"{contract}.CFX")
             if mapping is None or len(mapping) == 0:
-                raise ProviderError("Tushare fut_mapping IF.CFX 为空")
-            mapping = mapping.sort_values("trade_date").tail(days)
+                raise ProviderError(f"Tushare fut_mapping {contract}.CFX 为空")
+            mapping = mapping.sort_values("trade_date")
+            # 只取今天及之前（映射可能包含未来交易日，fut_daily 尚无数据）
+            today = datetime.date.today().strftime("%Y%m%d")
+            mapping = mapping[mapping["trade_date"].astype(str) <= today].tail(days)
 
             start = str(mapping["trade_date"].iloc[0])
             end = str(mapping["trade_date"].iloc[-1])
@@ -483,13 +488,13 @@ class TushareProvider(BaseProvider):
 
             series = []
             for _, r in mapping.iterrows():
-                date, contract = str(r["trade_date"]), r["mapping_ts_code"]
-                close = close_by_key.get((date, contract))
+                date, c = str(r["trade_date"]), r["mapping_ts_code"]
+                close = close_by_key.get((date, c))
                 if close is None:
                     continue  # 该日主力合约数据缺失则跳过
                 series.append({"date": _iso_date(date), "close": round(close, 2)})
             if not series:
-                raise ProviderError("Tushare IF 主力连续为空")
+                raise ProviderError(f"Tushare {contract} 主力连续为空")
             return series
 
         try:
@@ -497,7 +502,7 @@ class TushareProvider(BaseProvider):
         except ProviderError:
             raise
         except Exception as e:
-            raise ProviderError(f"Tushare IF 主力连续失败: {e}")
+            raise ProviderError(f"Tushare {contract} 主力连续失败: {e}")
 
     async def fetch_stock_sparkline(self, code: str) -> list[float]:
         """单只个股近 12 个交易日收盘价 → 归一化 sparkline（自选页分时走势）"""

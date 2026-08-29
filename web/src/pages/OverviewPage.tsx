@@ -137,7 +137,7 @@ export default function OverviewPage() {
   const chartNames: Record<string, string> = {
     "bar-dist": "涨跌家数分布",
     "turnover-intraday": "成交额分时",
-    "if-basis": "沪深300期现对比",
+    "if-basis": "股指期现对比",
   };
 
   // ─── 指数分时对比（T7.2，今日用真实分时，5日/20日用指数 sparkline） ───

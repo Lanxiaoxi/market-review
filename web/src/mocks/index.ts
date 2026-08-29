@@ -93,8 +93,8 @@ export const MOCK_WATCHLIST: WatchlistResponse = {
   summary: { totalValue: 128.6, todayPnl: 2.4, holdingPnl: 12.6, position: 82 },
 };
 
-/** 沪深300 期现对比 mock（合成：现货 4600 附近，期货主力小幅升水） */
-function genIfBasisMock(n = 40): IfBasisData {
+/** 股指期现对比 mock（合成：现货在基准价附近，期货主力小幅升水） */
+function genIfBasisMock(n = 40, base = 4600, contract = "IF", name = "沪深300"): IfBasisData {
   const dates: string[] = [];
   const spot: number[] = [];
   const futures: number[] = [];
@@ -106,11 +106,13 @@ function genIfBasisMock(n = 40): IfBasisData {
     if (wd === 0 || wd === 6) continue; // 跳过周末
     count++;
     dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
-    const base = 4600 + Math.sin(count / 6) * 60 + (count % 5) * 4;
-    spot.push(Math.round(base * 100) / 100);
-    futures.push(Math.round(base * 1.0028 * 100) / 100);
+    const v = base + Math.sin(count / 6) * base * 0.013 + (count % 5) * base * 0.001;
+    spot.push(Math.round(v * 100) / 100);
+    futures.push(Math.round(v * 1.0028 * 100) / 100);
   }
   return {
+    contract,
+    name,
     dates,
     spot,
     futures,
@@ -118,4 +120,17 @@ function genIfBasisMock(n = 40): IfBasisData {
   };
 }
 
-export const MOCK_IF_BASIS: IfBasisData = genIfBasisMock();
+/** 各合约 mock 基准价（与真实点位量级对齐） */
+const MOCK_CONTRACT_BASE: Record<string, { base: number; name: string }> = {
+  IF: { base: 4600, name: "沪深300" },
+  IH: { base: 2900, name: "上证50" },
+  IM: { base: 7700, name: "中证1000" },
+};
+
+export const MOCK_IF_BASIS: IfBasisData = genIfBasisMock(40, MOCK_CONTRACT_BASE.IF.base, "IF", MOCK_CONTRACT_BASE.IF.name);
+
+/** 按合约取 mock（hook 在切换合约且后端不可用时使用） */
+export function mockIfBasisFor(contract: string): IfBasisData {
+  const cfg = MOCK_CONTRACT_BASE[contract] ?? MOCK_CONTRACT_BASE.IF;
+  return genIfBasisMock(40, cfg.base, contract, cfg.name);
+}

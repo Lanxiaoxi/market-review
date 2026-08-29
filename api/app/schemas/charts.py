@@ -24,9 +24,11 @@ class ChartUpdateIn(BaseModel):
 
 
 class IfBasisOut(BaseModel):
-    """沪深300 期现对比（日线）：现货收盘 vs 中金所 IF 主力收盘"""
+    """股指期货期现对比（日线）：现货收盘 vs 中金所主力合约收盘"""
 
-    dates: list[str]      # "YYYY-MM-DD"（升序）
-    spot: list[float]     # 沪深300 现货收盘
-    futures: list[float]  # 中金所 IF 主力合约收盘
-    premium: list[float]  # 基差率 % = (futures - spot) / spot * 100
+    contract: str        # IF / IH / IM
+    name: str            # 现货指数名称（沪深300 / 上证50 / 中证1000）
+    dates: list[str]     # "YYYY-MM-DD"（升序）
+    spot: list[float]    # 现货指数收盘
+    futures: list[float] # 中金所主力合约收盘
+    premium: list[float] # 基差率 % = (futures - spot) / spot * 100

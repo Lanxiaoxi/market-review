@@ -2,7 +2,35 @@
 charts 路由：期现对比数据对齐逻辑单测（不触网）
 """
 
-from app.routers.charts import _align_series
+import pytest
+from fastapi import HTTPException
+
+from app.routers.charts import _align_series, FUTURES_CONTRACTS
+
+
+def test_futures_contracts_config():
+    """三个中金所合约的现货指数映射完整"""
+    assert FUTURES_CONTRACTS["IF"]["spot"] == "000300.SH"
+    assert FUTURES_CONTRACTS["IH"]["spot"] == "000016.SH"
+    assert FUTURES_CONTRACTS["IM"]["spot"] == "000852.SH"
+    assert FUTURES_CONTRACTS["IF"]["name"] == "沪深300"
+    assert FUTURES_CONTRACTS["IH"]["name"] == "上证50"
+    assert FUTURES_CONTRACTS["IM"]["name"] == "中证1000"
+
+
+def test_unknown_contract_rejected():
+    """未知合约应被拒绝（422）"""
+    from app.routers.charts import get_futures_basis
+
+    async def _call():
+        await get_futures_basis(contract="XX")
+
+    # get_futures_basis 是 async，用 asyncio 验证 raise
+    import asyncio
+
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(_call())
+    assert exc.value.status_code == 422
 
 
 def test_align_series_intersection():

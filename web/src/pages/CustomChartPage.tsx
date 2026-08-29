@@ -1,6 +1,8 @@
+import { useState } from "react";
 import PageHeader from "@/components/layout/PageHeader";
 import BaseCard from "@/components/common/BaseCard";
 import PlaceholderCard from "@/components/common/PlaceholderCard";
+import Segmented from "@/components/common/Segmented";
 import BarDistChart from "@/components/charts/BarDistChart";
 import TurnoverChart from "@/components/charts/TurnoverChart";
 import BasisChart from "@/components/charts/BasisChart";
@@ -67,7 +69,8 @@ export default function CustomChartPage() {
   const { data } = useOverview();
   useChartLibQuery(); // 加载图表库到 store
   const { data: intraday } = useIntraday(["sh000001"]); // 上证指数分时（成交额）
-  const { data: basis } = useIfBasis(60); // 沪深300 期现对比（日线）
+  const [contract, setContract] = useState("IF"); // 期现对比合约（IF/IH/IM）
+  const { data: basis } = useIfBasis(contract, 60);
 
   const charts = useChartLibStore((s) => s.charts);
   const barDist = charts.find((c) => c.id === "bar-dist");
@@ -126,16 +129,27 @@ export default function CustomChartPage() {
           )}
         </BaseCard>
 
-        {/* 沪深300期现对比（通栏） */}
+        {/* 股指期货期现对比（通栏，分段切换合约） */}
         <BaseCard style={{ gridColumn: "1 / -1", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>沪深300期现对比</span>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>沪深300现货 vs 中金所IF主力合约 · 日线</span>
-            {ifBasis && <PinButton id={ifBasis.id} name={ifBasis.name} type={ifBasis.type} pinned={ifBasis.pinned} />}
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>股指期货期现对比</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>现货 vs 中金所主力合约 · 日线</span>
+              <Segmented
+                options={[
+                  { label: "沪深300", value: "IF" },
+                  { label: "上证50", value: "IH" },
+                  { label: "中证1000", value: "IM" },
+                ]}
+                value={contract}
+                onChange={setContract}
+              />
+              {ifBasis && <PinButton id={ifBasis.id} name={ifBasis.name} type={ifBasis.type} pinned={ifBasis.pinned} />}
+            </div>
           </div>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--ink)" }}>沪深300现货</span>
-            <span style={{ fontSize: 12, color: "var(--accent)" }}>IF主力合约</span>
+            <span style={{ fontSize: 12, color: "var(--ink)" }}>{basis?.name ?? "现货指数"}</span>
+            <span style={{ fontSize: 12, color: "var(--accent)" }}>{basis?.contract ?? ""}主力合约</span>
             {basis && basis.dates.length > 0 && (
               <span style={{ fontSize: 12, color: "var(--muted)" }}>
                 最新基差率 {(basis.premium[basis.premium.length - 1] ?? 0) >= 0 ? "+" : ""}
