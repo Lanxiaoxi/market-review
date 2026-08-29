@@ -104,7 +104,8 @@ export default function BreadthTable({ breadth, showTurnover = false }: BreadthT
       {showTurnover && (
         <>
           <div style={{ height: 1, background: "var(--border)" }} />
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+          {/* 成交额：居中（标签在上、大数值在下） */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <span style={{ fontSize: 12, color: "var(--muted)" }}>成交额</span>
             <span className="num" style={{ fontSize: 24, fontWeight: 600, color: "var(--ink)", lineHeight: 1.2 }}>
               {turnoverToYi(breadth?.turnover)}
