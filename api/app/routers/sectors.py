@@ -3,8 +3,10 @@
 import hashlib
 import json
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.models.db import get_session
 from app.schemas.overview import SectorItemOut
 from app.services.aggregator import build_sectors
 from app.services.provider import ProviderError
@@ -23,13 +25,14 @@ async def get_sectors(
     request: Request,
     response: Response,
     sort: str = Query("pct", description="排序方式: pct(涨幅降序) / pct-asc(涨幅升序)"),
+    session: AsyncSession = Depends(get_session),
 ):
-    """返回申万一级行业涨跌排名"""
+    """返回申万一级行业涨跌排名（收盘后直读本地库）"""
     cache_key = f"sectors:{sort}"
     cached = sectors_cache.get(cache_key)
     if cached is None:
         try:
-            data = await build_sectors()
+            data = await build_sectors(session)
         except ProviderError as e:
             raise HTTPException(503, f"暂无有效数据：{e}")
         if sort == "pct-asc":

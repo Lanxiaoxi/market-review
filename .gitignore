@@ -12,8 +12,10 @@ __pycache__/
 node_modules/
 web/dist/
 
-# SQLite 数据
+# SQLite 数据（含 WAL 模式的伴生文件）
 api/data/app.db
+api/data/app.db-wal
+api/data/app.db-shm
 
 # 编辑器 / 系统
 .DS_Store

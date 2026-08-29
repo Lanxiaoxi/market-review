@@ -1,12 +1,17 @@
 """
-APScheduler 收盘快照定时任务（周一至周五 15:35，Asia/Shanghai）
+APScheduler 收盘定时任务（周一至周五 15:35，Asia/Shanghai）
+
+执行顺序：先回填 L2 持久层（补当日 + 补历史缺口），再落收盘快照。
+先回填后快照，快照才能直接读本地库而不额外回源。
 """
 
 import logging
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+from app.cache import clear_all
 from app.models.db import async_session
+from app.services.backfill import run_daily_job
 from app.services.snapshot_service import save_daily_snapshot
 
 logger = logging.getLogger(__name__)
@@ -14,9 +19,29 @@ logger = logging.getLogger(__name__)
 # 显式指定上海时区：A 股 15:35 收盘快照不随服务器时区漂移
 scheduler = AsyncIOScheduler(timezone="Asia/Shanghai")
 
+# 收盘后固化的分时代码（腾讯行情代码，与指数卡一一对应）
+INTRADAY_CODES = [
+    "sh000001",
+    "sh000016",
+    "sh000300",
+    "sh000905",
+    "sz399006",
+    "sh000688",
+    "sh000852",
+    "sh932000",
+]
+
 
 async def _run_snapshot():
-    """执行收盘快照"""
+    """回填 L2 → 落收盘快照"""
+    stats = await run_daily_job(intraday_codes=INTRADAY_CODES)
+    logger.info("[Scheduler] L2 回填完成：%s", stats or "无新增")
+
+    # L2 已更新，内存缓存里的旧数据必须失效，否则请求仍会拿到回填前的结果
+    if any(stats.values()):
+        clear_all()
+        logger.info("[Scheduler] 已清空内存缓存")
+
     async with async_session() as session:
         try:
             snap = await save_daily_snapshot(session)
@@ -39,7 +64,7 @@ def start_scheduler():
         replace_existing=True,
     )
     scheduler.start()
-    logger.info("[Scheduler] 收盘快照任务已启动（15:35 Asia/Shanghai）")
+    logger.info("[Scheduler] 收盘任务已启动（15:35 Asia/Shanghai，回填 + 快照）")
 
 
 def shutdown_scheduler():

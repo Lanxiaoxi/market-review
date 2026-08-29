@@ -3,9 +3,16 @@
 
 数据源解耦：聚合层不直接依赖任何具体数据源，只通过 provider 注册表
 （fetch_domain）按「数据域」取归一化数据，换源/加源不影响本层与路由。
+
+L2 优先：传入 session 时按「数据是否已定格」决定取数路径
+- 已定格（收盘后 / 历史日）→ 先读本地库，命中即返回，零回源
+- 盘中 → 先取实时源，本地库仅作兜底
+session 为 None 时退化为纯 provider 取数（兼容不落库的调用场景）。
 """
 
 import datetime
+
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import SHANGHAI_TZ
 from app.schemas.overview import (
@@ -16,7 +23,9 @@ from app.schemas.overview import (
     DistBucketOut,
     SectorItemOut,
 )
+from app.services import store
 from app.services.provider import (
+    ProviderError,
     fetch_domain,
     DOMAIN_INDICES,
     DOMAIN_BREADTH,
@@ -25,11 +34,48 @@ from app.services.provider import (
 )
 
 
-async def build_overview() -> OverviewOut:
-    """按域取数并聚合成 OverviewOut（各域数据源由 provider 映射表决定）"""
-    indices_raw = await fetch_domain(DOMAIN_INDICES)
-    breadth_raw = await fetch_domain(DOMAIN_BREADTH)
-    limit_raw = await fetch_domain(DOMAIN_LIMIT_UP)
+async def _resolve(session, trade_date, local_reader, domain, *args):
+    """按数据定格状态选路：定格走本地，盘中走实时（本地兜底）"""
+    if session is None or trade_date is None:
+        return await fetch_domain(domain, *args)
+
+    if store.is_settled(trade_date):
+        data = await local_reader(session, trade_date)
+        if data is not None:
+            return data
+        return await fetch_domain(domain, *args)
+
+    try:
+        return await fetch_domain(domain, *args)
+    except ProviderError:
+        data = await local_reader(session, trade_date)
+        if data is None:
+            raise
+        return data
+
+
+def _sector_out(s: dict) -> SectorItemOut:
+    return SectorItemOut(
+        name=s["name"],
+        pct=s["pct"],
+        leading=s.get("leading", "—"),
+        sparkline=s["sparkline"],
+    )
+
+
+async def build_overview(session: AsyncSession | None = None) -> OverviewOut:
+    """按域取数并聚合成 OverviewOut（传入 session 时优先读 L2 持久层）"""
+    trade_date = await store.latest_trade_date(session) if session is not None else None
+
+    indices_raw = await _resolve(
+        session, trade_date, store.read_indices, DOMAIN_INDICES
+    )
+    breadth_raw = await _resolve(
+        session, trade_date, store.read_breadth, DOMAIN_BREADTH
+    )
+    limit_raw = await _resolve(
+        session, trade_date, store.read_limit_top, DOMAIN_LIMIT_UP
+    )
 
     indices = [
         IndexSnapshotOut(
@@ -63,28 +109,14 @@ async def build_overview() -> OverviewOut:
     )
 
     # 行业 TOP5 从真实 sector 数据取
-    all_sectors = await fetch_domain(DOMAIN_SECTORS)
+    all_sectors = await _resolve(
+        session, trade_date, store.read_sectors, DOMAIN_SECTORS
+    )
     sorted_desc = sorted(all_sectors, key=lambda s: s["pct"], reverse=True)
     sorted_asc = sorted(all_sectors, key=lambda s: s["pct"])
 
-    sectors_up = [
-        SectorItemOut(
-            name=s["name"],
-            pct=s["pct"],
-            leading=s.get("leading", "—"),
-            sparkline=s["sparkline"],
-        )
-        for s in sorted_desc[:5]
-    ]
-    sectors_down = [
-        SectorItemOut(
-            name=s["name"],
-            pct=s["pct"],
-            leading=s.get("leading", "—"),
-            sparkline=s["sparkline"],
-        )
-        for s in sorted_asc[:5]
-    ]
+    sectors_up = [_sector_out(s) for s in sorted_desc[:5]]
+    sectors_down = [_sector_out(s) for s in sorted_asc[:5]]
 
     # 日期/收盘状态统一用上海时区；数据日期优先取行情交易日（周末/节假日与数据一致）
     now = datetime.datetime.now(SHANGHAI_TZ)
@@ -104,15 +136,10 @@ async def build_overview() -> OverviewOut:
     )
 
 
-async def build_sectors() -> list[SectorItemOut]:
-    """聚合行业板块排名（数据源由 provider 映射表决定）"""
-    all_sectors = await fetch_domain(DOMAIN_SECTORS)
-    return [
-        SectorItemOut(
-            name=s["name"],
-            pct=s["pct"],
-            leading=s.get("leading", "—"),
-            sparkline=s["sparkline"],
-        )
-        for s in all_sectors
-    ]
+async def build_sectors(session: AsyncSession | None = None) -> list[SectorItemOut]:
+    """聚合行业板块排名（传入 session 时优先读 L2 持久层）"""
+    trade_date = await store.latest_trade_date(session) if session is not None else None
+    all_sectors = await _resolve(
+        session, trade_date, store.read_sectors, DOMAIN_SECTORS
+    )
+    return [_sector_out(s) for s in all_sectors]

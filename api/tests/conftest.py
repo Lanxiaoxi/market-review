@@ -31,8 +31,27 @@ async def _fake_data_sources(monkeypatch):
 
 @pytest_asyncio.fixture(autouse=True)
 async def _init_db():
-    """每个测试前确保表结构存在（create_all + 迁移均幂等）"""
-    from app.models.db import init_db
+    """每个测试前：确保表结构存在 + 清空数据 + 清空内存缓存
+
+    用例之间完全隔离，避免依赖执行顺序（此前 watchlist 类测试就隐式依赖空库）。
+    """
+    from sqlmodel import SQLModel
+
+    from app.cache import clear_all
+    from app.models.db import engine, init_db
 
     await init_db()
+    async with engine.begin() as conn:
+        for table in reversed(SQLModel.metadata.sorted_tables):
+            await conn.execute(table.delete())
+    clear_all()
     yield
+
+
+@pytest_asyncio.fixture
+async def session():
+    """一个干净的 session（数据清理由 _init_db 统一负责）"""
+    from app.models.db import async_session
+
+    async with async_session() as s:
+        yield s

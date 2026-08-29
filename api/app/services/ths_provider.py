@@ -15,11 +15,13 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import logging
 
 import httpx
 
-from app.config import get_settings
+from app.config import SHANGHAI_TZ, get_settings
+from app.services.buckets import DIST_LABELS, bucketize, normalize_sparkline
 from app.services.provider import BaseProvider, ProviderError
 
 logger = logging.getLogger(__name__)
@@ -51,49 +53,31 @@ PAGE_SLEEP = 0.05
 # 并发上限（行业 K 线 / 成分股）
 MAX_CONCURRENCY = 6
 
-DIST_LABELS = ["涨停", "涨2-10%", "涨0-2%", "平盘", "跌0-2%", "跌2-10%", "跌停"]
-
-
-def _limit_threshold(ticker: str) -> float:
-    """近似涨停/跌停阈值（主板 10% / 创业科创 20% / 北交所 30%）"""
-    if ticker.startswith(("300", "301", "688")):
-        return 19.8
-    if ticker.startswith(("4", "8", "92")):
-        return 29.8
-    return 9.8
-
-
-def _bucketize(pct: float, ticker: str) -> str:
-    """把涨跌幅归入 7 档分布区间"""
-    th = _limit_threshold(ticker)
-    if pct >= th:
-        return "涨停"
-    if pct <= -th:
-        return "跌停"
-    if pct >= 2:
-        return "涨2-10%"
-    if pct <= -2:
-        return "跌2-10%"
-    if pct > 0:
-        return "涨0-2%"
-    if pct < 0:
-        return "跌0-2%"
-    return "平盘"
-
-
-def _normalize_sparkline(values: list[float], target_min=4, target_max=24) -> list[float]:
-    """收盘价序列归一化到 sparkline 的 y 坐标范围"""
-    if not values:
-        return [14] * 12
-    vmin, vmax = min(values), max(values)
-    if vmax == vmin:
-        return [14] * len(values)
-    return [target_max - (v - vmin) / (vmax - vmin) * (target_max - target_min) for v in values]
-
-
 def _iso_date(yyyymmdd: str) -> str:
     """20260828 → 2026-08-28"""
     return f"{yyyymmdd[:4]}-{yyyymmdd[4:6]}-{yyyymmdd[6:8]}"
+
+
+def _parse_ymd(v) -> datetime.date | None:
+    """20260828 / 2026-08-28 → date；无法解析返回 None"""
+    s = str(v).strip()
+    for fmt in ("%Y%m%d", "%Y-%m-%d", "%Y/%m/%d"):
+        try:
+            return datetime.datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _num(v, scale: float = 1.0) -> float | None:
+    """转 float（可带单位换算）；None / 空 / 非法 → None"""
+    if v is None or v == "":
+        return None
+    try:
+        val = float(v) * scale
+    except (TypeError, ValueError):
+        return None
+    return None if val != val else val
 
 
 class ThsProvider(BaseProvider):
@@ -198,7 +182,7 @@ class ThsProvider(BaseProvider):
                 "value": round(float(s["last_price"]), 2),
                 "change": round(float(s["price_change"]), 2),
                 "change_pct": round(float(s["price_change_ratio_pct"]), 2),
-                "sparkline": _normalize_sparkline(closes_map.get(ts_code, [])),
+                "sparkline": normalize_sparkline(closes_map.get(ts_code, [])),
             })
 
         # 港股指数（恒生指数/恒生科技）：THS 无 → 腾讯兜底
@@ -224,7 +208,7 @@ class ThsProvider(BaseProvider):
         for it in items:
             pct = float(it.get("price_change_ratio_pct") or 0)
             ticker = it.get("ticker") or ""
-            counts[_bucketize(pct, ticker)] += 1
+            counts[bucketize(pct, ticker)] += 1
             total_turnover += float(it.get("turnover") or 0)
 
         up = counts["涨停"] + counts["涨2-10%"] + counts["涨0-2%"]
@@ -290,7 +274,7 @@ class ThsProvider(BaseProvider):
         if len(bars) < 2:
             raise ProviderError(f"THS 股票 {thscode} 历史K线为空")
         closes = [float(b["close_price"]) for b in bars]
-        return _normalize_sparkline(closes)
+        return normalize_sparkline(closes)
 
     async def fetch_index_history(self, code: str, days: int) -> list[dict]:
         """单个指数历史日 K 收盘价（升序）—— 与 tushare 返回结构一致"""
@@ -394,7 +378,7 @@ class ThsProvider(BaseProvider):
                         "name": name,
                         "pct": pct,
                         "leading": "—",
-                        "sparkline": _normalize_sparkline(closes),
+                        "sparkline": normalize_sparkline(closes),
                     }
                 except ProviderError as e:
                     logger.warning("[THS] 行业 %s K线失败: %s", ts_code, e)
@@ -449,3 +433,163 @@ class ThsProvider(BaseProvider):
         for s in sectors:
             s.pop("ts_code", None)
         return sectors
+
+    # ─── 回填专用：返回原始行交给 store 落库 ───
+
+    @staticmethod
+    def _ms(d) -> int:
+        """date（上海时区 00:00）→ 毫秒戳"""
+        return int(
+            datetime.datetime(
+                d.year, d.month, d.day, tzinfo=datetime.timezone(datetime.timedelta(hours=8))
+            ).timestamp()
+            * 1000
+        )
+
+    async def _index_bars(self, thscode: str, start, end) -> list[tuple]:
+        """区间日 K → [(date, close), ...] 升序"""
+        d = await self._get(
+            "/api/a-share-index/prices/historical",
+            {"thscode": thscode, "interval": "1d", "start": self._ms(start), "end": self._ms(end)},
+        )
+        bars = d.get("item") or []
+        pairs = []
+        for b in bars:
+            try:
+                close = float(b["close_price"])
+                dte = datetime.datetime.fromtimestamp(
+                    b["date_ms"] / 1000, tz=datetime.timezone(datetime.timedelta(hours=8))
+                ).date()
+            except (KeyError, TypeError, ValueError):
+                continue
+            pairs.append((dte, close))
+        pairs.sort()
+        return pairs
+
+    async def fetch_stock_daily_raw(self, trade_date) -> list[dict]:
+        """全市场个股日线（THS 只有当日快照，历史区间请走 Tushare）"""
+        days = await self._calendar()
+        latest = _iso_date(str(days[-1]["date"]))
+        if trade_date.isoformat() != latest:
+            raise ProviderError(f"THS 仅支持当日快照（{latest}），无法回填 {trade_date}")
+
+        items = await self._paged_market()
+        if not items:
+            raise ProviderError("THS 全市场快照为空")
+
+        from app.services.provider import normalize_ts_code
+
+        return [
+            {
+                "ts_code": normalize_ts_code(str(it.get("thscode") or it.get("ticker") or "")),
+                "close": _num(it.get("last_price")),
+                "pct_chg": _num(it.get("price_change_ratio_pct")),
+                "amount": _num(it.get("turnover"), scale=1e-3),  # 元 → 千元
+            }
+            for it in items
+            if it.get("thscode") or it.get("ticker")
+        ]
+
+    async def fetch_index_range(self, start, end) -> list[dict]:
+        """指数日线区间（每只指数 1 次请求，涨跌幅由收盘价差分推算）"""
+        results = await asyncio.gather(
+            *(self._index_bars(ts_code, start, end) for ts_code in INDEX_CODES)
+        )
+        rows: list[dict] = []
+        for ts_code, series in zip(INDEX_CODES, results):
+            code, name = INDEX_CODES[ts_code]
+            prev = None
+            for dte, close in series:
+                rows.append(
+                    {
+                        "ts_code": ts_code,
+                        "code": code,
+                        "name": name,
+                        "trade_date": dte,
+                        "close": round(close, 2),
+                        "change": round(close - prev, 2) if prev is not None else 0,
+                        "pct_chg": round((close / prev - 1) * 100, 2) if prev else 0,
+                        "amount": None,
+                    }
+                )
+                prev = close
+
+        from app.services.tencent_provider import fetch_hk_index_range
+
+        rows.extend(await fetch_hk_index_range(start, end))
+        if not rows:
+            raise ProviderError(f"THS 指数日线区间为空（{start} ~ {end}）")
+        return rows
+
+    async def fetch_sector_range(self, start, end) -> list[dict]:
+        """行业日线区间（目录 1 次 + 每行业 1 次）
+
+        领涨股依赖当日全市场快照 + 成分股，成本过高，
+        因此只对区间最后一日补齐，其余日期为 "—"。
+        """
+        catalog_data = await self._get(
+            "/api/a-share-index/catalog/ths-index-list", {"tag": "industry"}
+        )
+        catalog = [
+            (it["thscode"], it["name"])
+            for it in (catalog_data.get("item") or [])
+            if it.get("thscode", "").startswith(THS_INDUSTRY_PREFIX)
+        ]
+        if not catalog:
+            raise ProviderError("THS 行业指数目录为空")
+
+        sem = asyncio.Semaphore(MAX_CONCURRENCY)
+
+        async def _one(ts_code: str, name: str) -> list[dict]:
+            async with sem:
+                try:
+                    series = await self._index_bars(ts_code, start, end)
+                except ProviderError as e:
+                    logger.warning("[THS] 行业 %s 日线区间失败: %s", ts_code, e)
+                    return []
+                rows, prev = [], None
+                for dte, close in series:
+                    rows.append(
+                        {
+                            "sector_code": ts_code,
+                            "name": name,
+                            "trade_date": dte,
+                            "close": round(close, 2),
+                            "pct_chg": round((close / prev - 1) * 100, 2) if prev else 0,
+                            "leading": "—",
+                        }
+                    )
+                    prev = close
+                return rows
+
+        results = await asyncio.gather(*(_one(c, n) for c, n in catalog))
+        rows = [r for rs in results for r in rs]
+        if not rows:
+            raise ProviderError(f"THS 行业日线区间为空（{start} ~ {end}）")
+
+        await self._patch_latest_leading(rows, end)
+        return rows
+
+    async def _patch_latest_leading(self, rows: list[dict], end) -> None:
+        """为区间最后一日补齐领涨股（复用实时域的领涨股计算结果，按名称匹配）"""
+        if end != datetime.datetime.now(SHANGHAI_TZ).date():
+            return
+        try:
+            sectors = await self.fetch_sectors()
+        except Exception as e:  # noqa: BLE001 —— 领涨股是增强字段，失败不影响主数据
+            logger.warning("[THS] 领涨股补齐失败（回退 —）: %s", e)
+            return
+        name_to_leading = {s["name"]: s.get("leading", "—") for s in sectors}
+        for r in rows:
+            if r["trade_date"] == end:
+                r["leading"] = name_to_leading.get(r["name"], "—")
+
+    async def fetch_trade_calendar(self, start, end) -> list:
+        """交易日历（THS 一次返回近一年，调用侧再按区间裁剪）"""
+        days = await self._calendar()
+        out = []
+        for d in days:
+            dte = _parse_ymd(str(d["date"]))
+            if dte is not None and start <= dte <= end:
+                out.append(dte)
+        return sorted(out)

@@ -10,6 +10,7 @@ import logging
 from typing import Optional
 
 from app.config import get_settings
+from app.services.buckets import DIST_LABELS, bucketize, limit_pct, normalize_sparkline
 from app.services.provider import BaseProvider, ProviderError
 
 logger = logging.getLogger(__name__)
@@ -89,49 +90,36 @@ INDEX_CODES = {
 HK_INDEX_CODES = ["HSI", "HSTECH"]
 
 
-def _normalize_sparkline(values: list[float], target_min=4, target_max=24) -> list[float]:
-    """将原始收盘价归一化到 sparkline 的 y 坐标范围"""
-    if not values:
-        return [14] * 12
-    vmin, vmax = min(values), max(values)
-    if vmax == vmin:
-        return [14] * len(values)
-    return [target_max - (v - vmin) / (vmax - vmin) * (target_max - target_min) for v in values]
-
-
-def _limit_pct(ts_code: str) -> float:
-    """按板块返回近似涨停/跌停阈值（主板 10%，创业板/科创板 20%，北交所 30%）"""
-    if ts_code.startswith(("300", "301", "688")):
-        return 19.8
-    if ts_code.startswith(("4", "8", "92")):
-        return 29.8
-    return 9.8
-
-
 def _iso_date(yyyymmdd: str) -> str:
     """20260828 → 2026-08-28"""
     return f"{yyyymmdd[:4]}-{yyyymmdd[4:6]}-{yyyymmdd[6:8]}"
 
 
-DIST_LABELS = ["涨停", "涨2-10%", "涨0-2%", "平盘", "跌0-2%", "跌2-10%", "跌停"]
+def _ymd(d) -> str:
+    """date → 20260828（Tushare 接口日期参数格式）"""
+    return d.strftime("%Y%m%d")
 
 
-def _bucketize(pct: float, ts_code: str) -> str:
-    """把涨跌幅归入 7 档分布区间（涨停/跌停按板块阈值近似）"""
-    th = _limit_pct(ts_code)
-    if pct >= th:
-        return "涨停"
-    if pct <= -th:
-        return "跌停"
-    if pct >= 2:
-        return "涨2-10%"
-    if pct <= -2:
-        return "跌2-10%"
-    if pct > 0:
-        return "涨0-2%"
-    if pct < 0:
-        return "跌0-2%"
-    return "平盘"
+def _parse_ymd(v) -> datetime.date | None:
+    """20260828 / 2026-08-28 → date；无法解析返回 None"""
+    s = str(v).strip()
+    for fmt in ("%Y%m%d", "%Y-%m-%d", "%Y/%m/%d"):
+        try:
+            return datetime.datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _f(v) -> float | None:
+    """转 float：None / 空 / 非法 / NaN 统一返回 None（落库为 NULL）"""
+    if v is None or v == "":
+        return None
+    try:
+        val = float(v)
+    except (TypeError, ValueError):
+        return None
+    return None if val != val else val  # NaN 自检
 
 
 async def fetch_index_daily() -> list[dict]:
@@ -160,7 +148,7 @@ async def fetch_index_daily() -> list[dict]:
                     "value": round(float(latest["close"]), 2),
                     "change": round(change, 2),
                     "change_pct": round(pct_chg, 2),
-                    "sparkline": _normalize_sparkline(closes),
+                    "sparkline": normalize_sparkline(closes),
                 })
             except Exception as e:
                 logger.warning("[Tushare] index_daily %s failed: %s", ts_code, e)
@@ -199,7 +187,7 @@ async def fetch_daily_market() -> dict:
             counts = {label: 0 for label in DIST_LABELS}
             limit_up = limit_down = 0
             for ts_code, pct in zip(df["ts_code"], df["pct_chg"]):
-                bucket = _bucketize(float(pct), str(ts_code))
+                bucket = bucketize(float(pct), str(ts_code))
                 counts[bucket] += 1
                 if bucket == "涨停":
                     limit_up += 1
@@ -267,7 +255,7 @@ async def fetch_limit_list() -> list[dict]:
             except Exception:
                 pass
             limit_df = df[
-                df.apply(lambda r: r["pct_chg"] >= _limit_pct(str(r["ts_code"])), axis=1)
+                df.apply(lambda r: r["pct_chg"] >= limit_pct(str(r["ts_code"])), axis=1)
             ].sort_values("pct_chg", ascending=False).head(5)
             return [
                 {
@@ -400,7 +388,7 @@ async def fetch_sector_daily() -> list[dict]:
                 "name": name,
                 "pct": round(float(latest["pct_chg"]), 2),
                 "leading": _industry_leader(members.get(ts_code, {}), pct_map),
-                "sparkline": _normalize_sparkline(closes[-12:]),
+                "sparkline": normalize_sparkline(closes[-12:]),
             }
         except Exception as e:
             logger.warning("[Tushare] sw_daily %s 失败: %s", ts_code, e)
@@ -474,12 +462,12 @@ class TushareProvider(BaseProvider):
                     up = sum(
                         1
                         for c, p in zip(df["ts_code"], df["pct_chg"])
-                        if _bucketize(float(p), str(c)) == "涨停"
+                        if bucketize(float(p), str(c)) == "涨停"
                     )
                     down = sum(
                         1
                         for c, p in zip(df["ts_code"], df["pct_chg"])
-                        if _bucketize(float(p), str(c)) == "跌停"
+                        if bucketize(float(p), str(c)) == "跌停"
                     )
                     result.append({"date": _iso_date(d), "limit_up": up, "limit_down": down})
                 except Exception as e:
@@ -556,7 +544,7 @@ class TushareProvider(BaseProvider):
             if df is None or len(df) == 0:
                 raise ProviderError(f"Tushare daily {ts_code} 为空")
             df = df.sort_values("trade_date")  # daily 默认降序，先排序
-            return _normalize_sparkline([float(v) for v in df["close"].tolist()])
+            return normalize_sparkline([float(v) for v in df["close"].tolist()])
 
         try:
             return await asyncio.to_thread(_fetch)
@@ -564,3 +552,170 @@ class TushareProvider(BaseProvider):
             raise
         except Exception as e:
             raise ProviderError(f"Tushare 个股 sparkline {ts_code} 失败: {e}")
+
+    # ─── 回填专用：返回原始行交给 store 落库 ───
+
+    async def fetch_stock_daily_raw(self, trade_date) -> list[dict]:
+        """单个交易日全市场个股日线（1 次请求拿全天 ~5400 行）"""
+        settings = get_settings()
+        if not settings.has_tushare:
+            raise ProviderError("未配置 TUSHARE_TOKEN，无法回填个股日线")
+
+        def _fetch() -> list[dict]:
+            pro = _ensure_pro()
+            df = pro.daily(
+                trade_date=_ymd(trade_date), fields="ts_code,close,pct_chg,amount"
+            )
+            if df is None or len(df) == 0:
+                raise ProviderError(f"Tushare daily {trade_date} 为空")
+            return [
+                {
+                    "ts_code": str(c),
+                    "close": _f(v),
+                    "pct_chg": _f(p),
+                    "amount": _f(a),
+                }
+                for c, v, p, a in zip(
+                    df["ts_code"], df["close"], df["pct_chg"], df["amount"]
+                )
+            ]
+
+        try:
+            return await asyncio.to_thread(_fetch)
+        except ProviderError:
+            raise
+        except Exception as e:
+            raise ProviderError(f"Tushare 个股日线 {trade_date} 失败: {e}")
+
+    async def fetch_index_range(self, start, end) -> list[dict]:
+        """指数日线区间（8 只 A 股指数各 1 次请求 + 2 只港股腾讯兜底）"""
+        settings = get_settings()
+        if not settings.has_tushare:
+            raise ProviderError("未配置 TUSHARE_TOKEN，无法回填指数日线")
+
+        def _fetch() -> list[dict]:
+            pro = _ensure_pro()
+            rows: list[dict] = []
+            for ts_code, (code, name) in INDEX_CODES.items():
+                try:
+                    df = pro.index_daily(ts_code=ts_code, start_date=_ymd(start), end_date=_ymd(end))
+                except Exception as e:
+                    logger.warning("[Tushare] index_daily %s 区间失败: %s", ts_code, e)
+                    continue
+                if df is None or len(df) == 0:
+                    continue
+                for _, r in df.sort_values("trade_date").iterrows():
+                    d = _parse_ymd(r["trade_date"])
+                    if d is None:
+                        continue
+                    rows.append(
+                        {
+                            "ts_code": ts_code,
+                            "code": code,
+                            "name": name,
+                            "trade_date": d,
+                            "close": _f(r["close"]) or 0,
+                            "change": _f(r["change"]) or 0,
+                            "pct_chg": _f(r["pct_chg"]) or 0,
+                            "amount": _f(r.get("amount")),
+                        }
+                    )
+            return rows
+
+        rows = await asyncio.to_thread(_fetch)
+        from app.services.tencent_provider import fetch_hk_index_range
+
+        rows.extend(await fetch_hk_index_range(start, end))
+        if not rows:
+            raise ProviderError(f"Tushare 指数日线区间为空（{start} ~ {end}）")
+        return rows
+
+    async def fetch_sector_range(self, start, end) -> list[dict]:
+        """申万一级行业日线区间（1 次分类 + 每行业 1 次日线）
+
+        历史区间的领涨股无法低成本还原（需逐日全市场成分股比对），故留空为 "—"；
+        当日领涨股由实时域 DOMAIN_SECTORS 提供。
+        """
+        settings = get_settings()
+        if not settings.has_tushare:
+            raise ProviderError("未配置 TUSHARE_TOKEN，无法回填行业日线")
+
+        def _fetch() -> list[dict]:
+            pro = _ensure_pro()
+            classify = _get_sw_classify(pro, _ymd(end))
+            rows: list[dict] = []
+            for index_code, industry_name in classify:
+                try:
+                    df = pro.sw_daily(ts_code=index_code, start_date=_ymd(start), end_date=_ymd(end))
+                except Exception as e:
+                    logger.warning("[Tushare] sw_daily %s 区间失败: %s", index_code, e)
+                    continue
+                if df is None or len(df) == 0:
+                    continue
+                for _, r in df.sort_values("trade_date").iterrows():
+                    d = _parse_ymd(r["trade_date"])
+                    if d is None:
+                        continue
+                    rows.append(
+                        {
+                            "sector_code": index_code,
+                            "name": industry_name,
+                            "trade_date": d,
+                            "close": _f(r["close"]) or 0,
+                            "pct_chg": _f(r["pct_chg"]) or 0,
+                            "leading": "—",
+                        }
+                    )
+            return rows
+
+        try:
+            return await asyncio.to_thread(_fetch)
+        except ProviderError:
+            raise
+        except Exception as e:
+            raise ProviderError(f"Tushare 行业日线区间失败: {e}")
+
+    async def fetch_stock_names(self) -> dict[str, str]:
+        """全市场代码 → 名称（1 次 stock_basic 请求，供涨停 TOP5 展示）"""
+        settings = get_settings()
+        if not settings.has_tushare:
+            raise ProviderError("未配置 TUSHARE_TOKEN，无法同步股票名称")
+
+        def _fetch() -> dict[str, str]:
+            pro = _ensure_pro()
+            basic = pro.stock_basic(exchange="", list_status="L", fields="ts_code,name")
+            if basic is None or len(basic) == 0:
+                raise ProviderError("Tushare stock_basic 为空")
+            return {str(c): str(n) for c, n in zip(basic["ts_code"], basic["name"])}
+
+        try:
+            return await asyncio.to_thread(_fetch)
+        except ProviderError:
+            raise
+        except Exception as e:
+            raise ProviderError(f"Tushare stock_basic 失败: {e}")
+
+    async def fetch_trade_calendar(self, start, end) -> list:
+        """交易日历（1 次 trade_cal 请求，覆盖区间内全部开市日）"""
+        settings = get_settings()
+        if not settings.has_tushare:
+            raise ProviderError("未配置 TUSHARE_TOKEN，无法同步交易日历")
+
+        def _fetch() -> list:
+            pro = _ensure_pro()
+            df = pro.trade_cal(
+                exchange="SSE", start_date=_ymd(start), end_date=_ymd(end), is_open="1"
+            )
+            if df is None or len(df) == 0:
+                raise ProviderError("Tushare trade_cal 为空")
+            dates = sorted(d for d in (_parse_ymd(v) for v in df["cal_date"]) if d is not None)
+            if not dates:
+                raise ProviderError("Tushare trade_cal 日期解析结果为空")
+            return dates
+
+        try:
+            return await asyncio.to_thread(_fetch)
+        except ProviderError:
+            raise
+        except Exception as e:
+            raise ProviderError(f"Tushare trade_cal 失败: {e}")

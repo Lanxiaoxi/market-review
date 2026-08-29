@@ -3,8 +3,10 @@
 import hashlib
 import json
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.models.db import get_session
 from app.schemas.overview import OverviewOut
 from app.services.aggregator import build_overview
 from app.services.provider import ProviderError
@@ -20,13 +22,17 @@ def _make_etag(data) -> str:
 
 
 @router.get("/overview", response_model=OverviewOut)
-async def get_overview(request: Request, response: Response):
-    """返回指数卡 + 分时对比 + 市场宽度 + 涨停 TOP + 行业 TOP5"""
+async def get_overview(
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+):
+    """返回指数卡 + 分时对比 + 市场宽度 + 涨停 TOP + 行业 TOP5（收盘后直读本地库）"""
     cache_key = "overview"
     cached = overview_cache.get(cache_key)
     if cached is None:
         try:
-            data = await build_overview()
+            data = await build_overview(session)
         except ProviderError as e:
             raise HTTPException(503, f"暂无有效数据：{e}")
         cached = data.model_dump()

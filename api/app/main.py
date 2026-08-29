@@ -27,10 +27,39 @@ async def lifespan(app: FastAPI):
 
     async with async_session() as session:
         await seed_chart_library(session)
+
+    _maybe_backfill_on_startup()
     start_scheduler()
     yield
     # 关闭
     shutdown_scheduler()
+
+
+def _maybe_backfill_on_startup() -> None:
+    """按 BACKFILL_ON_STARTUP_DAYS 在后台回填历史（0 = 关闭）
+
+    后台跑不阻塞启动；回填完清空内存缓存，避免继续吐回填前的旧数据。
+    """
+    days = get_settings().backfill_on_startup_days
+    if days <= 0:
+        return
+
+    import asyncio
+
+    async def _job():
+        from app.cache import clear_all
+        from app.services.backfill import run_backfill_days
+        from app.tasks import INTRADAY_CODES
+
+        try:
+            stats = await run_backfill_days(days, INTRADAY_CODES)
+            logging.getLogger(__name__).info("[Startup] 自动回填完成：%s", stats)
+            if any(stats.values()):
+                clear_all()
+        except Exception as e:  # noqa: BLE001 —— 启动期回填失败不应拖垮服务
+            logging.getLogger(__name__).exception("[Startup] 自动回填失败: %s", e)
+
+    asyncio.create_task(_job())
 
 
 app = FastAPI(

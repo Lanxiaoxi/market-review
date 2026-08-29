@@ -1,4 +1,4 @@
-"""历史复盘路由 —— GET /api/history?date= + POST /api/history/snapshot（手动快照，受 API Token 保护）"""
+"""历史复盘路由 —— 历史快照查询 / 手动快照 / 手动触发 L2 回填（写接口受 API Token 保护）"""
 
 from datetime import date
 
@@ -9,6 +9,7 @@ from app.auth import require_api_token
 from app.models.db import get_session
 from app.services.snapshot_service import get_snapshot_by_date, save_daily_snapshot
 from app.schemas.overview import OverviewOut
+from app.cache import clear_all
 
 router = APIRouter(tags=["历史"])
 
@@ -23,6 +24,22 @@ async def get_history(
     if snap is None:
         raise HTTPException(404, f"未找到 {dt.isoformat()} 的快照")
     return snap
+
+
+@router.post("/history/backfill", dependencies=[Depends(require_api_token)])
+async def trigger_backfill(days: int = Query(250, ge=1, le=500)):
+    """手动触发 L2 回填（首次上线补齐历史用）
+
+    已回填的日期由 fetch_log 自动跳过，重复调用不会重复拉取。
+    返回各域实际写入量，全为 0 表示无缺口。
+    """
+    from app.tasks import INTRADAY_CODES
+    from app.services.backfill import run_backfill_days
+
+    stats = await run_backfill_days(days, INTRADAY_CODES)
+    if any(stats.values()):
+        clear_all()
+    return stats
 
 
 @router.post("/history/snapshot", response_model=OverviewOut, dependencies=[Depends(require_api_token)])

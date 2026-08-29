@@ -58,6 +58,59 @@ async def fetch_hk_kline(code: str, days: int = 12) -> list[float] | None:
         return None
 
 
+async def fetch_hk_index_range(start, end) -> list[dict]:
+    """港股指数日线区间（Tushare / THS 均无港股指数，由腾讯兜底）
+
+    腾讯日 K 按「根数」取，故按区间天数换算并多取一些以覆盖节假日。
+    change / pct_chg 腾讯日 K 不直接提供，置 0（港股卡仅展示点位与涨跌幅，
+    涨跌幅由收盘价差分在调用侧计算）。
+    """
+    bars = max(20, int((end - start).days * 1.6) + 20)
+    rows: list[dict] = []
+    for code in HK_INDEX_CODES:
+        series = await fetch_hk_kline_rows(code, bars)
+        prev: float | None = None
+        for d, close in series or []:
+            if d is None or not (start <= d <= end):
+                continue
+            rows.append(
+                {
+                    "ts_code": code,
+                    "code": code,
+                    "name": HK_INDICES[code]["name"],
+                    "trade_date": d,
+                    "close": close,
+                    "change": round(close - prev, 2) if prev is not None else 0,
+                    "pct_chg": round((close / prev - 1) * 100, 2) if prev else 0,
+                    "amount": None,
+                }
+            )
+            prev = close
+    return rows
+
+
+async def fetch_hk_kline_rows(code: str, days: int = 12) -> list[tuple] | None:
+    """港股指数日 K（带日期），code: HSI / HSTECH
+
+    返回 [(date, close), ...] 升序；回填历史区间时用。date 解析失败时为 None。
+    """
+    cfg = HK_INDICES.get(code)
+    if cfg is None:
+        return None
+    url = f"https://web.ifzq.gtimg.cn/appstock/app/kline/kline?param={cfg['kline']},day,,,{days}"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            node = resp.json().get("data", {}).get(cfg["kline"], {})
+            rows = node.get("qfqday") or node.get("day") or []
+            pairs = _parse_kline_pairs(rows)
+            return pairs or None
+    except Exception as e:
+        logger.warning("[Tencent] %s kline(rows) failed: %s", code, e)
+        return None
+
+
 async def fetch_hk_snapshot(code: str) -> dict | None:
     """
     拉取港股指数实时快照（腾讯兜底），code: HSI / HSTECH
@@ -84,9 +137,9 @@ async def fetch_hk_snapshot(code: str) -> dict | None:
             # sparkline：真实日 K（归一化），失败时为空数组（卡片不渲染迷你线）
             closes = await fetch_hk_kline(code, days=12)
             if closes:
-                from app.services.tushare_provider import _normalize_sparkline
+                from app.services.buckets import normalize_sparkline
 
-                sparkline = _normalize_sparkline(closes)
+                sparkline = normalize_sparkline(closes)
             else:
                 sparkline = []
 
@@ -121,13 +174,29 @@ def _parse_minute_rows(rows: list[str]) -> dict | None:
 
 def _parse_kline_rows(rows: list[list]) -> list[float]:
     """解析腾讯日 K 行（[date, open, close, high, low, amount]）→ 收盘价列表"""
-    closes = []
+    return [close for _, close in _parse_kline_pairs(rows)]
+
+
+def _parse_kline_pairs(rows: list[list]) -> list[tuple]:
+    """解析腾讯日 K 行 → [(date, close), ...]（回填需要日期，故单独提供）"""
+    import datetime as _dt
+
+    pairs = []
     for row in rows:
         try:
-            closes.append(float(row[2]))
+            close = float(row[2])
         except (IndexError, TypeError, ValueError):
             continue
-    return closes
+        raw = str(row[0]).strip()
+        d = None
+        for fmt in ("%Y-%m-%d", "%Y%m%d", "%Y/%m/%d"):
+            try:
+                d = _dt.datetime.strptime(raw, fmt).date()
+                break
+            except ValueError:
+                continue
+        pairs.append((d, close))
+    return pairs
 
 
 async def fetch_intraday(code: str) -> dict | None:

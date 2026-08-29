@@ -10,6 +10,7 @@ from app.auth import require_api_token
 from app.cache import charts_cache, DEFAULT_TTL
 from app.models.db import get_session
 from app.models.chart_config import ChartConfig
+from app.services import store
 from app.schemas.charts import (
     ChartLibItemOut,
     ChartCreateIn,
@@ -53,8 +54,12 @@ def _align_series(
 async def get_futures_basis(
     contract: str = Query("IF", description="中金所合约: IF(沪深300) / IH(上证50) / IM(中证1000)"),
     days: int = Query(60, ge=10, le=250),
+    session: AsyncSession = Depends(get_session),
 ):
-    """股指期货期现对比（日线）：现货指数 vs 中金所主力合约，基差率附随"""
+    """股指期货期现对比（日线）：现货指数 vs 中金所主力合约，基差率附随
+
+    优先读 L2（index_daily + futures_daily），本地缺失才回源。
+    """
     key = contract.upper()
     if key not in FUTURES_CONTRACTS:
         raise HTTPException(422, f"不支持的合约: {contract}（可选 IF/IH/IM）")
@@ -64,8 +69,15 @@ async def get_futures_basis(
     if cached is not None:
         return IfBasisOut(**cached)
 
-    spot_series = await fetch_domain(DOMAIN_INDEX_HISTORY, FUTURES_CONTRACTS[key]["spot"], days)
-    fut_series = await fetch_domain(DOMAIN_FUTURES_MAIN, key, days)
+    spot_code = FUTURES_CONTRACTS[key]["spot"]
+    spot_series = await store.read_index_history(session, spot_code, days)
+    if spot_series is None:
+        spot_series = await fetch_domain(DOMAIN_INDEX_HISTORY, spot_code, days)
+
+    fut_series = await store.read_futures_series(session, key, days)
+    if fut_series is None:
+        fut_series = await fetch_domain(DOMAIN_FUTURES_MAIN, key, days)
+
     dates, spot, futures = _align_series(spot_series, fut_series)
     if not dates:
         raise HTTPException(502, "期现数据为空，请稍后重试")
@@ -86,20 +98,32 @@ async def get_futures_basis(
 
 
 @router.get("/charts/if-basis", response_model=IfBasisOut, include_in_schema=False)
-async def get_if_basis_alias(days: int = Query(60, ge=10, le=250)):
+async def get_if_basis_alias(
+    days: int = Query(60, ge=10, le=250),
+    session: AsyncSession = Depends(get_session),
+):
     """旧路径兼容：/charts/if-basis == /charts/futures-basis?contract=IF"""
-    return await get_futures_basis(contract="IF", days=days)
+    return await get_futures_basis(contract="IF", days=days, session=session)
 
 
 @router.get("/charts/limit-counts", response_model=LimitCountsOut)
-async def get_limit_counts(days: int = Query(60, ge=10, le=250)):
-    """日线涨停/跌停家数序列（近 days 个交易日）"""
+async def get_limit_counts(
+    days: int = Query(60, ge=10, le=250),
+    session: AsyncSession = Depends(get_session),
+):
+    """日线涨停/跌停家数序列（近 days 个交易日）
+
+    本地 market_daily_agg 直接聚合，命中即返回 —— 这是全站回源次数最多的接口，
+    改造前每次冷启动要按天打 2×days 次涨停池/跌停池接口。
+    """
     cache_key = f"limit-counts:{days}"
     cached = charts_cache.get(cache_key)
     if cached is not None:
         return LimitCountsOut(**cached)
 
-    rows = await fetch_domain(DOMAIN_LIMIT_COUNTS, days)
+    rows = await store.read_limit_counts(session, days)
+    if rows is None:
+        rows = await fetch_domain(DOMAIN_LIMIT_COUNTS, days)
     if not rows:
         raise HTTPException(502, "涨跌停家数数据为空，请稍后重试")
 

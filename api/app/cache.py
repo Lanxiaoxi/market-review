@@ -45,3 +45,17 @@ charts_cache = TTLCache()           # 图表数据（期现对比等）
 # 收盘后 TTL 24h，盘中 60s
 DEFAULT_TTL = 60 * 60 * 24
 INTRADAY_TTL = 60
+
+_ALL_CACHES = (
+    overview_cache,
+    sectors_cache,
+    intraday_cache,
+    stock_sparkline_cache,
+    charts_cache,
+)
+
+
+def clear_all() -> None:
+    """清空全部内存缓存（L2 回填完成后调用，避免内存层继续吐回填前的旧数据）"""
+    for c in _ALL_CACHES:
+        c.clear()

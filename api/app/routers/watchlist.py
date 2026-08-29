@@ -18,23 +18,31 @@ from app.schemas.watchlist import (
     WatchlistCreateIn,
     WatchlistUpdateIn,
 )
-from app.services.provider import fetch_domain, DOMAIN_STOCK_SPARKLINE
+from app.services import store
+from app.services.provider import fetch_domain, normalize_ts_code, DOMAIN_STOCK_SPARKLINE
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["自选"])
 
 
-async def _stock_sparkline(code: str) -> list[float]:
-    """个股分时走势 sparkline（按代码缓存 24h；数据源不可用时返回空数组，不阻塞列表）"""
+async def _stock_sparkline(session: AsyncSession, code: str) -> list[float]:
+    """个股走势 sparkline：优先读本地 stock_daily，缺失才回源
+
+    失败返回空数组 —— sparkline 是增强字段，不阻塞自选列表。
+    """
     cached = stock_sparkline_cache.get(code)
     if cached is not None:
         return cached
-    try:
-        data = await fetch_domain(DOMAIN_STOCK_SPARKLINE, code)
-    except Exception as e:  # noqa: BLE001 —— sparkline 是增强字段，失败不影响主数据
-        logger.warning("[Watchlist] 个股 %s sparkline 获取失败: %s", code, e)
-        return []
+
+    data = await store.read_stock_sparkline(session, normalize_ts_code(code))
+    if data is None:
+        try:
+            data = await fetch_domain(DOMAIN_STOCK_SPARKLINE, code)
+        except Exception as e:  # noqa: BLE001 —— sparkline 是增强字段，失败不影响主数据
+            logger.warning("[Watchlist] 个股 %s sparkline 获取失败: %s", code, e)
+            return []
+
     stock_sparkline_cache.set(code, data, DEFAULT_TTL)
     return data
 
@@ -66,8 +74,8 @@ async def build_watchlist_response(session: AsyncSession) -> WatchlistResponse:
 
     items = [_item_out(r) for r in rows]
 
-    # 分时走势 sparkline：并发补充（尽力而为，失败为空数组）
-    sparks = await asyncio.gather(*(_stock_sparkline(r.code) for r in rows))
+    # 走势 sparkline：并发补充（尽力而为，失败为空数组）
+    sparks = await asyncio.gather(*(_stock_sparkline(session, r.code) for r in rows))
     for item, sp in zip(items, sparks):
         item.sparkline = sp
 

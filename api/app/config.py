@@ -46,6 +46,11 @@ class Settings:
             "DATABASE_URL",
             f"sqlite+aiosqlite:///{(DATA_DIR / 'app.db').as_posix()}",
         )
+        # 启动时自动回填的交易日数（0 = 关闭）。首次部署建议设 250，
+        # 回填完成后改回 0 —— 已回填的日期会被 fetch_log 跳过，不会重复拉取。
+        self.backfill_on_startup_days: int = int(
+            os.getenv("BACKFILL_ON_STARTUP_DAYS", "0")
+        )
 
     @property
     def is_dev(self) -> bool:

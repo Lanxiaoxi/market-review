@@ -31,6 +31,13 @@ DOMAIN_INDEX_HISTORY = "index_history"      # 单个指数历史日 K 收盘价�
 DOMAIN_FUTURES_MAIN = "futures_main"        # 中金所股指期货（IF/IH/IM）主力连续日线
 DOMAIN_LIMIT_COUNTS = "limit_counts"        # 日线涨停/跌停家数序列
 
+# ─── 回填专用域（供 L2 持久层按交易日/区间补数据，前端不直接消费）───
+DOMAIN_STOCK_DAILY_RAW = "stock_daily_raw"  # 单个交易日的全市场个股日线明细
+DOMAIN_INDEX_RANGE = "index_range"          # 指数日线区间（跨多日，批量回填用）
+DOMAIN_SECTOR_RANGE = "sector_range"        # 行业日线区间（跨多日，批量回填用）
+DOMAIN_STOCK_NAMES = "stock_names"          # 全市场代码 → 名称映射
+DOMAIN_CALENDAR = "calendar"                # 交易日历（回填的基准，落库后不再回源）
+
 DOMAINS = (
     DOMAIN_INDICES,
     DOMAIN_BREADTH,
@@ -41,6 +48,10 @@ DOMAINS = (
     DOMAIN_INDEX_HISTORY,
     DOMAIN_FUTURES_MAIN,
     DOMAIN_LIMIT_COUNTS,
+    DOMAIN_STOCK_DAILY_RAW,
+    DOMAIN_INDEX_RANGE,
+    DOMAIN_SECTOR_RANGE,
+    DOMAIN_STOCK_NAMES,
 )
 
 # ─── 能力矩阵：每个域可用 Provider（按优先级排列，供 auto/降级使用）───
@@ -54,6 +65,12 @@ CAPABILITY: dict[str, list[str]] = {
     DOMAIN_INDEX_HISTORY: ["tushare", "ths"],
     DOMAIN_FUTURES_MAIN: ["tushare"],        # 期货仅 Tushare 有（同花顺/腾讯均无）
     DOMAIN_LIMIT_COUNTS: ["ths", "tushare"], # ths 涨停/跌停池计数权威；tushare 用 daily 近似
+    # 回填专用：ths 的快照类接口只能取当日，历史区间只有 tushare 能补
+    DOMAIN_STOCK_DAILY_RAW: ["tushare", "ths"],
+    DOMAIN_INDEX_RANGE: ["tushare", "ths"],
+    DOMAIN_SECTOR_RANGE: ["ths", "tushare"],
+    DOMAIN_STOCK_NAMES: ["tushare"],
+    DOMAIN_CALENDAR: ["tushare", "ths"],
 }
 
 # ─── 硬编码映射表：每个数据域默认主源（必须属于该域能力矩阵）───
@@ -67,6 +84,11 @@ DOMAIN_PROVIDER: dict[str, str] = {
     DOMAIN_INDEX_HISTORY: "tushare",
     DOMAIN_FUTURES_MAIN: "tushare",
     DOMAIN_LIMIT_COUNTS: "ths",
+    DOMAIN_STOCK_DAILY_RAW: "tushare",
+    DOMAIN_INDEX_RANGE: "tushare",
+    DOMAIN_SECTOR_RANGE: "ths",
+    DOMAIN_STOCK_NAMES: "tushare",
+    DOMAIN_CALENDAR: "tushare",
 }
 
 # ─── 数据域 → 协议方法名（域命名与取数语义解耦）───
@@ -80,6 +102,11 @@ DOMAIN_METHOD: dict[str, str] = {
     DOMAIN_INDEX_HISTORY: "fetch_index_history",
     DOMAIN_FUTURES_MAIN: "fetch_futures_main",
     DOMAIN_LIMIT_COUNTS: "fetch_limit_counts",
+    DOMAIN_STOCK_DAILY_RAW: "fetch_stock_daily_raw",
+    DOMAIN_INDEX_RANGE: "fetch_index_range",
+    DOMAIN_SECTOR_RANGE: "fetch_sector_range",
+    DOMAIN_STOCK_NAMES: "fetch_stock_names",
+    DOMAIN_CALENDAR: "fetch_trade_calendar",
 }
 
 
@@ -133,6 +160,37 @@ class BaseProvider:
     async def fetch_limit_counts(self, days: int) -> list[dict]:
         """日线涨停/跌停家数：返回 [{"date": "YYYY-MM-DD", "limit_up": int, "limit_down": int}, ...]（升序）"""
         raise ProviderError(f"{self.name} 不支持 limit_counts")
+
+    # ─── 回填专用：返回原始行，由 store 落库，不做展示层聚合 ───
+
+    async def fetch_stock_daily_raw(self, trade_date) -> list[dict]:
+        """单个交易日全市场个股日线明细
+
+        返回 [{"ts_code", "close", "pct_chg", "amount"}, ...]
+        """
+        raise ProviderError(f"{self.name} 不支持 stock_daily_raw")
+
+    async def fetch_index_range(self, start, end) -> list[dict]:
+        """指数日线区间（跨多日）
+
+        返回 [{"ts_code", "code", "name", "trade_date"(date), "close", "change", "pct_chg", "amount"}, ...]
+        """
+        raise ProviderError(f"{self.name} 不支持 index_range")
+
+    async def fetch_sector_range(self, start, end) -> list[dict]:
+        """行业日线区间（跨多日）
+
+        返回 [{"sector_code", "name", "trade_date"(date), "close", "pct_chg", "leading"}, ...]
+        """
+        raise ProviderError(f"{self.name} 不支持 sector_range")
+
+    async def fetch_stock_names(self) -> dict[str, str]:
+        """全市场代码 → 名称映射 {ts_code: name}"""
+        raise ProviderError(f"{self.name} 不支持 stock_names")
+
+    async def fetch_trade_calendar(self, start, end) -> list:
+        """交易日历：返回 [date, ...]（升序，仅含开市日）"""
+        raise ProviderError(f"{self.name} 不支持 calendar")
 
 
 # ─── 注册表 ───
