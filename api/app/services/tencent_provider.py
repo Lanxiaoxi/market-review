@@ -67,7 +67,7 @@ async def fetch_hk_index_range(start, end) -> list[dict]:
     """
     bars = max(20, int((end - start).days * 1.6) + 20)
     rows: list[dict] = []
-    for code in HK_INDEX_CODES:
+    for code in HK_INDICES:
         series = await fetch_hk_kline_rows(code, bars)
         prev: float | None = None
         for d, close in series or []:
