@@ -3,9 +3,10 @@ import PageHeader from "@/components/layout/PageHeader";
 import CardHeader from "@/components/layout/CardHeader";
 import BaseCard from "@/components/common/BaseCard";
 import Segmented from "@/components/common/Segmented";
-import DataTable, { RowSparkline } from "@/components/common/DataTable";
+import { RowSparkline } from "@/components/common/DataTable";
 import SectorHistoryChart from "@/components/charts/SectorHistoryChart";
 import { useSectors, useSectorHistory } from "@/hooks/useSectors";
+import type { SectorItem } from "@/types/market";
 
 /** 异动标记：连涨天数 / 10 日新高 */
 function MoveBadge({ item }: { item: { upDays?: number; newHigh10d?: boolean } }) {
@@ -38,6 +39,49 @@ function MoveBadge({ item }: { item: { upDays?: number; newHigh10d?: boolean } }
   );
 }
 
+/** 板块行（涨幅榜/跌幅榜共用），点击查看历史走势 */
+function SectorRow({
+  s,
+  selected,
+  onSelect,
+}: {
+  s: SectorItem;
+  selected: string | null;
+  onSelect: (code: string | null) => void;
+}) {
+  const isUp = s.pct >= 0;
+  const active = selected === s.code;
+  return (
+    <div
+      onClick={() => onSelect(s.code ?? null)}
+      title="查看历史走势"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "8px 6px",
+        cursor: "pointer",
+        background: active ? "var(--active-bg)" : "transparent",
+        borderRadius: 8,
+        marginLeft: -6,
+      }}
+    >
+      <span style={{ flex: "0 0 96px", fontSize: 13, fontWeight: 500, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
+      <span className="num" style={{
+        flex: "0 0 72px", fontSize: 13, fontWeight: 500, textAlign: "right",
+        color: isUp ? "var(--up)" : "var(--down)",
+      }}>
+        {isUp ? "+" : ""}{s.pct.toFixed(2)}%
+      </span>
+      <span style={{ flex: "0 0 auto", display: "flex", alignItems: "center", minWidth: 0, overflow: "hidden" }}>
+        <MoveBadge item={s} />
+      </span>
+      <span style={{ flex: 1, fontSize: 12, color: "var(--muted-strong)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.leading}</span>
+      <RowSparkline points={s.sparkline} isUp={isUp} />
+    </div>
+  );
+}
+
 export default function SectorPage() {
   // 动量区间：1=当日 / 5=近5日 / 10=近10日 / 20=近20日
   const [range, setRange] = useState(1);
@@ -56,6 +100,10 @@ export default function SectorPage() {
   }, [selected]);
 
   const rangeLabel = range === 1 ? "当日" : `近${range}日`;
+  // 左涨幅榜（>=0 降序）/ 右跌幅榜（<0 升序）
+  const items = data ?? [];
+  const gainers = items.filter((s) => s.pct >= 0);
+  const losers = items.filter((s) => s.pct < 0).reverse();
 
   return (
     <>
@@ -102,8 +150,8 @@ export default function SectorPage() {
         style={{ display: "flex", flexDirection: "column", gap: 14 }}
       >
         <CardHeader
-          title={`行业板块 · ${rangeLabel}涨跌排名`}
-          hint="按涨跌幅排序 · 单位 % · 点击板块查看历史走势"
+          title={`行业板块 · ${rangeLabel}涨跌`}
+          hint="左涨幅榜 / 右跌幅榜 · 单位 % · 点击板块查看历史走势"
           actions={
             <Segmented
               options={[
@@ -121,55 +169,42 @@ export default function SectorPage() {
             />
           }
         />
-        <DataTable
-          columns={[
-            { label: "板块", className: "colName" },
-            { label: "涨跌幅", className: "colPct" },
-            { label: "异动", className: "colMove" },
-            { label: "领涨股", className: "colLeader" },
-            { label: `${rangeLabel}走势`, className: "colSpark" },
-          ]}
-        >
-          {(data ?? []).length === 0 ? (
-            <div style={{ padding: "32px 20px", textAlign: "center" }}>
-              <span style={{ fontSize: 13, color: "var(--muted-strong)" }}>暂无有效数据</span>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+          {/* 左：涨幅榜 */}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--up)" }}>涨幅榜</span>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>{gainers.length} 个板块</span>
             </div>
-          ) : (
-            (data ?? []).map((s) => {
-              const isUp = s.pct >= 0;
-              const active = selected === s.code;
-              return (
-                <div
-                  key={s.code ?? s.name}
-                  onClick={() => setSelected(s.code ?? null)}
-                  title="查看历史走势"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "10px 6px",
-                    cursor: "pointer",
-                    background: active ? "var(--active-bg)" : "transparent",
-                    borderRadius: 8,
-                    marginLeft: -6,
-                  }}
-                >
-                  <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", width: 120, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
-                  <span className="num" style={{
-                    fontSize: 13, fontWeight: 500, textAlign: "right", width: 80,
-                    color: isUp ? "var(--up)" : "var(--down)",
-                  }}>
-                    {isUp ? "+" : ""}{s.pct.toFixed(2)}%
-                  </span>
-                  <span style={{ width: 96, display: "flex", alignItems: "center" }}>
-                    <MoveBadge item={s} />
-                  </span>
-                  <span style={{ fontSize: 13, color: "var(--muted-strong)", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.leading}</span>
-                  <RowSparkline points={s.sparkline} isUp={isUp} />
-                </div>
-              );
-            })
-          )}
-        </DataTable>
+            {gainers.length === 0 ? (
+              <div style={{ padding: "24px 12px", textAlign: "center" }}>
+                <span style={{ fontSize: 13, color: "var(--muted-strong)" }}>暂无上涨板块</span>
+              </div>
+            ) : (
+              gainers.map((s) => (
+                <SectorRow key={s.code ?? s.name} s={s} selected={selected} onSelect={setSelected} />
+              ))
+            )}
+          </div>
+
+          {/* 右：跌幅榜 */}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--down)" }}>跌幅榜</span>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>{losers.length} 个板块</span>
+            </div>
+            {losers.length === 0 ? (
+              <div style={{ padding: "24px 12px", textAlign: "center" }}>
+                <span style={{ fontSize: 13, color: "var(--muted-strong)" }}>暂无下跌板块</span>
+              </div>
+            ) : (
+              losers.map((s) => (
+                <SectorRow key={s.code ?? s.name} s={s} selected={selected} onSelect={setSelected} />
+              ))
+            )}
+          </div>
+        </div>
       </BaseCard>
     </>
   );
