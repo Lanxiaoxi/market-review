@@ -24,8 +24,8 @@ export default function BasisChart({ data, height = 320 }: BasisChartProps) {
     return {
       axisPointer: { link: [{ xAxisIndex: "all" }] },
       grid: [
-        { top: 16, right: 40, bottom: 118, left: 56 },
-        { top: "auto", right: 40, bottom: 16, left: 56, height: 84 },
+        { top: 16, right: 40, bottom: 120, left: 56 },
+        { top: "auto", right: 40, bottom: 28, left: 56, height: 82 },
       ],
       xAxis: [
         {
