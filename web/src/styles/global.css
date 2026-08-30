@@ -57,7 +57,9 @@ button {
 }
 
 .mr-enter {
-  animation: mr-fade-up var(--dur-slow) var(--ease-out) both;
+  /* backwards：仅延迟期填充起始态；结束后交还属性控制权，
+     否则 fill-mode: both 会让入场动画的 transform:none 永久覆盖 hover 的 transform（上浮/放大失效） */
+  animation: mr-fade-up var(--dur-slow) var(--ease-out) backwards;
 }
 
 .mr-fade {
