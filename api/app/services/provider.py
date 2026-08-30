@@ -52,6 +52,7 @@ DOMAINS = (
     DOMAIN_INDEX_RANGE,
     DOMAIN_SECTOR_RANGE,
     DOMAIN_STOCK_NAMES,
+    DOMAIN_CALENDAR,
 )
 
 # ─── 能力矩阵：每个域可用 Provider（按优先级排列，供 auto/降级使用）───
