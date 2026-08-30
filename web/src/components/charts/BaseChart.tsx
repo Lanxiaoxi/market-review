@@ -120,6 +120,8 @@ interface BaseChartProps {
   onChartReady?: (instance: EChartsInstance) => void;
   style?: React.CSSProperties;
   className?: string;
+  /** 系列数量会动态增删的图表开启：setOption 时 replaceMerge=['series']，彻底移除消失的系列 */
+  replaceSeries?: boolean;
 }
 
 export default function BaseChart({
@@ -129,6 +131,7 @@ export default function BaseChart({
   onChartReady,
   style,
   className,
+  replaceSeries = false,
 }: BaseChartProps) {
   const chartRef = useRef<EChartsInstance | null>(null);
 
@@ -168,6 +171,7 @@ export default function BaseChart({
         onChartReady?.(instance);
       }}
       notMerge={false}
+      replaceMerge={replaceSeries ? ["series"] : undefined}
       lazyUpdate={true}
     />
   );

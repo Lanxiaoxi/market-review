@@ -99,5 +99,8 @@ export default function IntradayChart({
     };
   }, [series, timeLabels]);
 
-  return <BaseChart option={option} height={height} />;
+  if (series.length === 0) return null;
+
+  // replaceSeries：勾选增删指数时系列整体替换，旧线才能被彻底移除
+  return <BaseChart option={option} height={height} replaceSeries />;
 }
