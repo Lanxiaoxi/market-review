@@ -23,8 +23,15 @@ export default function BasisChart({ data, height = 320 }: BasisChartProps) {
 
     return {
       axisPointer: { link: [{ xAxisIndex: "all" }] },
+      legend: {
+        top: 0,
+        right: 0,
+        itemWidth: 12,
+        itemHeight: 8,
+        textStyle: { fontSize: 11, color: TOKENS.muted },
+      },
       grid: [
-        { top: 16, right: 40, bottom: 120, left: 56 },
+        { top: 36, right: 40, bottom: 120, left: 56 },
         { top: "auto", right: 40, bottom: 28, left: 56, height: 82 },
       ],
       xAxis: [

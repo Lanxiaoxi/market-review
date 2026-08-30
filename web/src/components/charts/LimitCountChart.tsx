@@ -20,7 +20,14 @@ export default function LimitCountChart({ data, height = 300 }: LimitCountChartP
     const showIdx = (i: number) => i === 0 || i === n - 1 || i % step === 0;
 
     return {
-      grid: { top: 24, right: 20, bottom: 20, left: 44 },
+      grid: { top: 32, right: 20, bottom: 20, left: 44 },
+      legend: {
+        top: 0,
+        right: 0,
+        itemWidth: 12,
+        itemHeight: 8,
+        textStyle: { fontSize: 11, color: TOKENS.muted },
+      },
       xAxis: {
         type: "category" as const,
         data: dates,
