@@ -11,6 +11,11 @@ __pycache__/
 # Node
 node_modules/
 web/dist/
+web/dist_bak*/
+*.tsbuildinfo
+
+# 工具 / 智能体工作目录
+.workbuddy/
 
 # SQLite 数据（含 WAL 模式的伴生文件）
 api/data/app.db
