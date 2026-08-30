@@ -9,7 +9,7 @@ interface BreadthSeriesChartProps {
 
 /**
  * 日线市场宽度：上涨/平盘/下跌家数堆叠柱（红/灰/绿，与首页市场宽度同语义）。
- * 数据点完整传入，日期标签稀疏展示；tooltip 显示当日三家数。
+ * 折线为「上涨占比」= 上涨家数 ÷（上涨+下跌），右轴 0–100%，50% 为多空平衡。
  */
 export default function BreadthSeriesChart({ data, height = 300 }: BreadthSeriesChartProps) {
   const { dates, up, flat, down } = data;
@@ -19,8 +19,14 @@ export default function BreadthSeriesChart({ data, height = 300 }: BreadthSeries
     const step = Math.max(1, Math.ceil(n / 6));
     const showIdx = (i: number) => i === 0 || i === n - 1 || i % step === 0;
 
+    // 上涨占比（%）：上涨 ÷ (上涨+下跌)，分母为 0 时按 0 处理
+    const upRatio = up.map((u, i) => {
+      const denom = u + down[i];
+      return denom > 0 ? (u / denom) * 100 : 0;
+    });
+
     return {
-      grid: { top: 28, right: 20, bottom: 20, left: 44 },
+      grid: { top: 28, right: 44, bottom: 20, left: 44 },
       legend: {
         top: 0,
         right: 0,
@@ -38,11 +44,20 @@ export default function BreadthSeriesChart({ data, height = 300 }: BreadthSeries
         },
         axisTick: { show: false },
       },
-      yAxis: {
-        type: "value" as const,
-        splitLine: { lineStyle: { color: TOKENS.grid } },
-        axisLabel: { fontSize: 11 },
-      },
+      yAxis: [
+        {
+          type: "value" as const,
+          splitLine: { lineStyle: { color: TOKENS.grid } },
+          axisLabel: { fontSize: 11 },
+        },
+        {
+          type: "value" as const,
+          min: 0,
+          max: 100,
+          splitLine: { show: false },
+          axisLabel: { fontSize: 11, formatter: (v: number) => `${v}%` },
+        },
+      ],
       tooltip: {
         trigger: "axis" as const,
         backgroundColor: "#fff",
@@ -76,12 +91,16 @@ export default function BreadthSeriesChart({ data, height = 300 }: BreadthSeries
         },
         {
           type: "line" as const,
-          name: "上涨家数",
-          data: up,
+          name: "上涨占比",
+          data: upRatio,
+          yAxisIndex: 1,
           smooth: true,
           symbol: "none",
           lineStyle: { width: 2, color: TOKENS.ink },
           itemStyle: { color: TOKENS.ink },
+          tooltip: {
+            valueFormatter: (v: unknown) => `${Number(v).toFixed(1)}%`,
+          },
           z: 5,
         },
       ],
