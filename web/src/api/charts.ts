@@ -1,5 +1,12 @@
 import apiClient from "./client";
-import type { IfBasisData, LimitCountsData, BreadthSeriesData, FiftyTwoWeekData } from "@/types/market";
+import type {
+  IfBasisData,
+  LimitCountsData,
+  BreadthSeriesData,
+  FiftyTwoWeekData,
+  BondYieldData,
+  TreasuryFuturesData,
+} from "@/types/market";
 
 /** 股指期货期现对比（日线，近 days 个交易日；contract: IF/IH/IM） */
 export async function fetchFuturesBasis(contract: string, days = 60): Promise<IfBasisData> {
@@ -32,6 +39,27 @@ export async function fetchBreadthSeries(days = 60): Promise<BreadthSeriesData> 
 export async function fetch52wHighLow(days = 60): Promise<FiftyTwoWeekData> {
   const { data } = await apiClient.get<FiftyTwoWeekData>("/charts/52w-high-low", {
     params: { days },
+    timeout: 30_000,
+  });
+  return data;
+}
+
+/** 中债国债收益率曲线（2/5/10/30 年期，近 days 个交易日） */
+export async function fetchBondYield(days = 60): Promise<BondYieldData> {
+  const { data } = await apiClient.get<BondYieldData>("/charts/bond-yield", {
+    params: { days },
+    timeout: 20_000,
+  });
+  return data;
+}
+
+/** 国债期货主力连续日线（contract: TS/TF/T/TL） */
+export async function fetchTreasuryFutures(
+  contract: string,
+  days = 60
+): Promise<TreasuryFuturesData> {
+  const { data } = await apiClient.get<TreasuryFuturesData>("/charts/treasury-futures", {
+    params: { contract, days },
     timeout: 30_000,
   });
   return data;

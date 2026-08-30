@@ -123,3 +123,20 @@ export interface FiftyTwoWeekData {
   newHigh: number[];   // 每日创 52 周新高个股数
   newLow: number[];    // 每日创 52 周新低个股数
 }
+
+/** 中债国债收益率曲线（%，2/5/10/30 年期） */
+export interface BondYieldData {
+  dates: string[];
+  twoYear: (number | null)[];
+  fiveYear: (number | null)[];
+  tenYear: (number | null)[];
+  thirtyYear: (number | null)[];
+}
+
+/** 国债期货主力连续日线 */
+export interface TreasuryFuturesData {
+  contract: string;    // TS / TF / T / TL
+  name: string;
+  dates: string[];
+  closes: number[];
+}

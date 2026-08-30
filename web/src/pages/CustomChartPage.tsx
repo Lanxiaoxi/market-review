@@ -8,10 +8,14 @@ import BasisChart from "@/components/charts/BasisChart";
 import LimitCountChart from "@/components/charts/LimitCountChart";
 import BreadthSeriesChart from "@/components/charts/BreadthSeriesChart";
 import FiftyTwoWeekChart from "@/components/charts/FiftyTwoWeekChart";
+import BondYieldChart from "@/components/charts/BondYieldChart";
+import TreasuryFuturesChart from "@/components/charts/TreasuryFuturesChart";
 import { useIfBasis } from "@/hooks/useIfBasis";
 import { useLimitCounts } from "@/hooks/useLimitCounts";
 import { useBreadthSeries } from "@/hooks/useBreadthSeries";
 import { use52wHighLow } from "@/hooks/use52wHighLow";
+import { useBondYield } from "@/hooks/useBondYield";
+import { useTreasuryFutures } from "@/hooks/useTreasuryFutures";
 
 /** 时间范围选项：默认（60 个交易日）在左，近7天 / 近30天 依次 */
 const RANGE_OPTIONS = [
@@ -27,14 +31,21 @@ export default function CustomChartPage() {
   const [limitRange, setLimitRange] = useState("default");
   const [breadthRange, setBreadthRange] = useState("default");
   const [hlRange, setHlRange] = useState("default");
+  const [yieldRange, setYieldRange] = useState("default");
+  const [tfContract, setTfContract] = useState("T"); // 国债期货合约（TS/TF/T/TL）
+  const [tfRange, setTfRange] = useState("default");
   const basisDays = basisRange === "7d" ? 7 : basisRange === "30d" ? 30 : 60;
   const limitDays = limitRange === "7d" ? 7 : limitRange === "30d" ? 30 : 60;
   const breadthDays = breadthRange === "7d" ? 7 : breadthRange === "30d" ? 30 : 60;
   const hlDays = hlRange === "7d" ? 7 : hlRange === "30d" ? 30 : 60;
+  const yieldDays = yieldRange === "7d" ? 7 : yieldRange === "30d" ? 30 : 60;
+  const tfDays = tfRange === "7d" ? 7 : tfRange === "30d" ? 30 : 60;
   const { data: basis } = useIfBasis(contract, basisDays);
   const { data: limitCounts } = useLimitCounts(limitDays); // 日线涨跌停家数
   const { data: breadthSeries } = useBreadthSeries(breadthDays); // 日线市场宽度
   const { data: hlData } = use52wHighLow(hlDays); // 52 周新高/新低
+  const { data: bondYield } = useBondYield(yieldDays); // 国债收益率
+  const { data: tfData } = useTreasuryFutures(tfContract, tfDays); // 国债期货
 
   return (
     <>
@@ -191,6 +202,85 @@ export default function CustomChartPage() {
           </div>
           {hlData && hlData.dates.length > 0 ? (
             <FiftyTwoWeekChart data={hlData} height={300} />
+          ) : (
+            <PlaceholderCard text="暂无有效数据" />
+          )}
+        </BaseCard>
+
+        {/* 国债收益率（通栏） */}
+        <BaseCard
+          className="mr-enter"
+          style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 14, animationDelay: "240ms" }}
+        >
+          <CardHeader
+            title="国债收益率"
+            actions={
+              <>
+                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>中债（CCDC）口径 · 近 {yieldDays} 个交易日</span>
+                <Segmented
+                  options={RANGE_OPTIONS}
+                  value={yieldRange}
+                  onChange={setYieldRange}
+                  ariaLabel="国债收益率时间范围"
+                />
+              </>
+            }
+          />
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>2年期 / 5年期 / 10年期 / 30年期</span>
+            {bondYield && bondYield.dates.length > 0 && (
+              <span style={{ fontSize: 12, color: "var(--muted-strong)" }}>
+                最新一日（{bondYield.dates[bondYield.dates.length - 1]}）：10Y {bondYield.tenYear[bondYield.tenYear.length - 1] ?? "—"}%
+              </span>
+            )}
+          </div>
+          {bondYield && bondYield.dates.length > 0 ? (
+            <BondYieldChart data={bondYield} height={300} />
+          ) : (
+            <PlaceholderCard text="暂无有效数据" />
+          )}
+        </BaseCard>
+
+        {/* 国债期货主力连续（通栏） */}
+        <BaseCard
+          className="mr-enter"
+          style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 14, animationDelay: "300ms" }}
+        >
+          <CardHeader
+            title="国债期货日线"
+            actions={
+              <>
+                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>中金所主力连续 · 近 {tfDays} 个交易日</span>
+                <Segmented
+                  options={[
+                    { label: "2年TS", value: "TS" },
+                    { label: "5年TF", value: "TF" },
+                    { label: "10年T", value: "T" },
+                    { label: "30年TL", value: "TL" },
+                  ]}
+                  value={tfContract}
+                  onChange={setTfContract}
+                  ariaLabel="切换国债期货合约"
+                />
+                <Segmented
+                  options={RANGE_OPTIONS}
+                  value={tfRange}
+                  onChange={setTfRange}
+                  ariaLabel="国债期货时间范围"
+                />
+              </>
+            }
+          />
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "var(--ink)" }}>{tfData?.name ?? ""}</span>
+            {tfData && tfData.dates.length > 0 && (
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                最新一日（{tfData.dates[tfData.dates.length - 1]}）：{tfData.closes[tfData.closes.length - 1]}
+              </span>
+            )}
+          </div>
+          {tfData && tfData.dates.length > 0 ? (
+            <TreasuryFuturesChart data={tfData} height={300} />
           ) : (
             <PlaceholderCard text="暂无有效数据" />
           )}
