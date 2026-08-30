@@ -50,13 +50,10 @@ function SectorRow({
   s,
   selected,
   onSelect,
-  topBadge,
 }: {
   s: SectorItem;
   selected: string | null;
   onSelect: (code: string | null) => void;
-  /** 区间领涨/领跌 TOP 徽标（前 5 名） */
-  topBadge?: string;
 }) {
   const isUp = s.pct >= 0;
   const active = selected === s.code;
@@ -76,21 +73,6 @@ function SectorRow({
       }}
     >
       <span style={{ flex: "0 0 88px", fontSize: 13, fontWeight: 500, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
-      {topBadge && (
-        <span
-          style={{
-            flex: "0 0 auto",
-            fontSize: 11,
-            padding: "1px 5px",
-            borderRadius: 4,
-            border: "1px solid var(--border-hover)",
-            color: "var(--muted-strong)",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {topBadge}
-        </span>
-      )}
       <span className="num" style={{
         flex: "0 0 72px", fontSize: 13, fontWeight: 500, textAlign: "right",
         color: isUp ? "var(--up)" : "var(--down)",
@@ -206,8 +188,8 @@ export default function SectorPage() {
                 <span style={{ fontSize: 13, color: "var(--muted-strong)" }}>暂无上涨板块</span>
               </div>
             ) : (
-              gainers.map((s, i) => (
-                <SectorRow key={s.code ?? s.name} s={s} selected={selected} onSelect={setSelected} topBadge={i < 5 ? "领涨TOP" : undefined} />
+              gainers.map((s) => (
+                <SectorRow key={s.code ?? s.name} s={s} selected={selected} onSelect={setSelected} />
               ))
             )}
           </div>
@@ -223,8 +205,8 @@ export default function SectorPage() {
                 <span style={{ fontSize: 13, color: "var(--muted-strong)" }}>暂无下跌板块</span>
               </div>
             ) : (
-              losers.map((s, i) => (
-                <SectorRow key={s.code ?? s.name} s={s} selected={selected} onSelect={setSelected} topBadge={i < 5 ? "领跌TOP" : undefined} />
+              losers.map((s) => (
+                <SectorRow key={s.code ?? s.name} s={s} selected={selected} onSelect={setSelected} />
               ))
             )}
           </div>
