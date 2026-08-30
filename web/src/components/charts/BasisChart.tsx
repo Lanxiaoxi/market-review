@@ -31,8 +31,8 @@ export default function BasisChart({ data, height = 320 }: BasisChartProps) {
         textStyle: { fontSize: 11, color: TOKENS.muted },
       },
       grid: [
-        { top: 36, right: 40, bottom: 120, left: 56 },
-        { top: "auto", right: 40, bottom: 28, left: 56, height: 82 },
+        { top: 36, right: 48, bottom: 120, left: 56 },
+        { top: "auto", right: 48, bottom: 28, left: 56, height: 82 },
       ],
       xAxis: [
         {
@@ -61,7 +61,18 @@ export default function BasisChart({ data, height = 320 }: BasisChartProps) {
           type: "value" as const,
           gridIndex: 0,
           scale: true,
+          name: "现货",
+          nameTextStyle: { fontSize: 11, color: TOKENS.muted },
           splitLine: { lineStyle: { color: TOKENS.grid } },
+          axisLabel: { fontSize: 11 },
+        },
+        {
+          type: "value" as const,
+          gridIndex: 0,
+          scale: true,
+          name: "主力",
+          nameTextStyle: { fontSize: 11, color: TOKENS.muted },
+          splitLine: { show: false },
           axisLabel: { fontSize: 11 },
         },
         {
@@ -107,7 +118,7 @@ export default function BasisChart({ data, height = 320 }: BasisChartProps) {
           name: "主力合约",
           data: futures,
           xAxisIndex: 0,
-          yAxisIndex: 0,
+          yAxisIndex: 1,
           smooth: false,
           symbol: "none",
           lineStyle: { width: 2, color: TOKENS.accent, cap: "round" as const, join: "round" as const },
@@ -121,7 +132,7 @@ export default function BasisChart({ data, height = 320 }: BasisChartProps) {
             itemStyle: { color: v >= 0 ? TOKENS.up : TOKENS.down, borderRadius: [2, 2, 0, 0] },
           })),
           xAxisIndex: 1,
-          yAxisIndex: 1,
+          yAxisIndex: 2,
           barWidth: "55%",
           // 0 零线（--grid-strong）
           markLine: {
