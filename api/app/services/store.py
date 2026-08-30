@@ -508,17 +508,29 @@ async def read_indices(
 
 
 def _sector_meta(items: list[SectorDaily]) -> dict:
-    """板块异动标记：连涨天数（截至最新日）+ 10 日新高"""
+    """板块异动标记：连涨/连跌天数（截至最新日，方向改变即停）+ 10 日新高/新低"""
     up_days = 0
+    down_days = 0
     for it in reversed(items):
-        if it.pct_chg and it.pct_chg > 0:
+        p = it.pct_chg
+        if p and p > 0:
+            if down_days > 0:  # 方向已变为跌 → 涨势结束
+                break
             up_days += 1
+        elif p and p < 0:
+            if up_days > 0:  # 方向已变为涨 → 跌势结束
+                break
+            down_days += 1
         else:
             break
     last10 = [i.close for i in items[-10:]]
     latest_close = items[-1].close
-    new_high_10d = bool(last10) and latest_close >= max(last10)
-    return {"up_days": up_days, "new_high_10d": new_high_10d}
+    return {
+        "up_days": up_days,
+        "down_days": down_days,
+        "new_high_10d": bool(last10) and latest_close >= max(last10),
+        "new_low_10d": bool(last10) and latest_close <= min(last10),
+    }
 
 
 async def read_sectors(session: AsyncSession, trade_date: date, lookback: int = 12) -> list[dict] | None:

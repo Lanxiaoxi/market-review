@@ -8,18 +8,24 @@ import SectorHistoryChart from "@/components/charts/SectorHistoryChart";
 import { useSectors, useSectorHistory } from "@/hooks/useSectors";
 import type { SectorItem } from "@/types/market";
 
-/** 异动标记：连涨天数 / 10 日新高 */
-function MoveBadge({ item }: { item: { upDays?: number; newHigh10d?: boolean } }) {
+/** 异动标记：连涨/连跌天数、10 日新高/新低 */
+function MoveBadge({ item }: { item: { upDays?: number; downDays?: number; newHigh10d?: boolean; newLow10d?: boolean } }) {
   const badges: { text: string; color: string; bg: string }[] = [];
   if ((item.upDays ?? 0) >= 3) {
     badges.push({ text: `连涨${item.upDays}天`, color: "var(--up)", bg: "var(--active-bg)" });
   }
+  if ((item.downDays ?? 0) >= 3) {
+    badges.push({ text: `连跌${item.downDays}天`, color: "var(--down)", bg: "var(--active-bg)" });
+  }
   if (item.newHigh10d) {
     badges.push({ text: "10日新高", color: "var(--accent)", bg: "var(--active-bg)" });
   }
+  if (item.newLow10d) {
+    badges.push({ text: "10日新低", color: "var(--accent)", bg: "var(--active-bg)" });
+  }
   if (badges.length === 0) return null;
   return (
-    <span style={{ display: "inline-flex", gap: 4, flex: "0 0 auto" }}>
+    <span style={{ display: "inline-flex", gap: 4, flexWrap: "wrap" }}>
       {badges.map((b) => (
         <span
           key={b.text}
@@ -44,10 +50,13 @@ function SectorRow({
   s,
   selected,
   onSelect,
+  topBadge,
 }: {
   s: SectorItem;
   selected: string | null;
   onSelect: (code: string | null) => void;
+  /** 区间领涨/领跌 TOP 徽标（前 5 名） */
+  topBadge?: string;
 }) {
   const isUp = s.pct >= 0;
   const active = selected === s.code;
@@ -66,14 +75,29 @@ function SectorRow({
         marginLeft: -6,
       }}
     >
-      <span style={{ flex: "0 0 96px", fontSize: 13, fontWeight: 500, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
+      {topBadge && (
+        <span
+          style={{
+            flex: "0 0 auto",
+            fontSize: 11,
+            padding: "1px 5px",
+            borderRadius: 4,
+            border: "1px solid var(--border-hover)",
+            color: "var(--muted-strong)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {topBadge}
+        </span>
+      )}
+      <span style={{ flex: "0 0 88px", fontSize: 13, fontWeight: 500, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
       <span className="num" style={{
         flex: "0 0 72px", fontSize: 13, fontWeight: 500, textAlign: "right",
         color: isUp ? "var(--up)" : "var(--down)",
       }}>
         {isUp ? "+" : ""}{s.pct.toFixed(2)}%
       </span>
-      <span style={{ flex: "0 0 auto", display: "flex", alignItems: "center", minWidth: 0, overflow: "hidden" }}>
+      <span style={{ flex: "0 0 auto", display: "flex", alignItems: "center" }}>
         <MoveBadge item={s} />
       </span>
       <span style={{ flex: 1, fontSize: 12, color: "var(--muted-strong)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.leading}</span>
@@ -182,8 +206,8 @@ export default function SectorPage() {
                 <span style={{ fontSize: 13, color: "var(--muted-strong)" }}>暂无上涨板块</span>
               </div>
             ) : (
-              gainers.map((s) => (
-                <SectorRow key={s.code ?? s.name} s={s} selected={selected} onSelect={setSelected} />
+              gainers.map((s, i) => (
+                <SectorRow key={s.code ?? s.name} s={s} selected={selected} onSelect={setSelected} topBadge={i < 5 ? "领涨TOP" : undefined} />
               ))
             )}
           </div>
@@ -199,8 +223,8 @@ export default function SectorPage() {
                 <span style={{ fontSize: 13, color: "var(--muted-strong)" }}>暂无下跌板块</span>
               </div>
             ) : (
-              losers.map((s) => (
-                <SectorRow key={s.code ?? s.name} s={s} selected={selected} onSelect={setSelected} />
+              losers.map((s, i) => (
+                <SectorRow key={s.code ?? s.name} s={s} selected={selected} onSelect={setSelected} topBadge={i < 5 ? "领跌TOP" : undefined} />
               ))
             )}
           </div>

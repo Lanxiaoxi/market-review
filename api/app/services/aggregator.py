@@ -75,7 +75,9 @@ def _sector_out(s: dict) -> SectorItemOut:
         sparkline=s["sparkline"],
         code=s.get("code", ""),
         up_days=s.get("up_days", 0),
+        down_days=s.get("down_days", 0),
         new_high_10d=s.get("new_high_10d", False),
+        new_low_10d=s.get("new_low_10d", False),
     )
 
 
