@@ -230,9 +230,10 @@ export default function OverviewPage() {
     period === "today" && !viewDate // 历史回放不拉实时分时（分时是当日数据）
   );
 
-  // 今日：仅使用真实分时；无数据则为空数组（页面显示「暂无有效数据」）
+  // 今日：仅使用真实分时；无数据则为空数组（页面显示「暂无有效数据」）。
+  // 历史回放时强制忽略 intraday（react-query 停用不会清缓存，否则会残留最新日分时）
   const todaySeries = INDEX_SERIES.map((def) => {
-    const intra = intraday?.codes[def.tencent];
+    const intra = !viewDate ? intraday?.codes[def.tencent] : undefined;
     return {
       name: def.name,
       data: intra && intra.prices.length > 0 ? toPctChange(intra.prices) : [],
