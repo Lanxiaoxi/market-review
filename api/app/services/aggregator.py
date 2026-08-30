@@ -34,21 +34,33 @@ from app.services.provider import (
 )
 
 
-async def _resolve(session, trade_date, local_reader, domain, *args):
-    """按数据定格状态选路：定格走本地，盘中走实时（本地兜底）"""
+async def _resolve(session, trade_date, local_reader, domain, *args, allow_provider=True):
+    """按数据定格状态选路：定格走本地，盘中走实时（本地兜底）
+
+    allow_provider=False（历史日期回放）时只读本地、绝不回源：
+    实时源返回的是当天数据，用于历史日期会张冠李戴。
+    """
     if session is None or trade_date is None:
         return await fetch_domain(domain, *args)
 
     if store.is_settled(trade_date):
-        data = await local_reader(session, trade_date)
+        data = await local_reader(session, trade_date, *args)
         if data is not None:
             return data
+        if not allow_provider:
+            raise ProviderError(f"本地无 {domain} 数据（{trade_date}）")
         return await fetch_domain(domain, *args)
+
+    if not allow_provider:
+        data = await local_reader(session, trade_date, *args)
+        if data is None:
+            raise ProviderError(f"本地无 {domain} 数据（{trade_date}）")
+        return data
 
     try:
         return await fetch_domain(domain, *args)
     except ProviderError:
-        data = await local_reader(session, trade_date)
+        data = await local_reader(session, trade_date, *args)
         if data is None:
             raise
         return data
@@ -63,18 +75,30 @@ def _sector_out(s: dict) -> SectorItemOut:
     )
 
 
-async def build_overview(session: AsyncSession | None = None) -> OverviewOut:
-    """按域取数并聚合成 OverviewOut（传入 session 时优先读 L2 持久层）"""
-    trade_date = await store.latest_trade_date(session) if session is not None else None
+async def build_overview(
+    session: AsyncSession | None = None,
+    trade_date: datetime.date | None = None,
+    allow_provider: bool = True,
+) -> OverviewOut:
+    """按域取数并聚合成 OverviewOut（传入 session 时优先读 L2 持久层）
+
+    trade_date：指定回放日期（历史复盘用），None 时取最新交易日。
+    allow_provider=False：历史日期只读本地库，禁止回源（实时源是当天数据）。
+    """
+    if trade_date is None:
+        trade_date = await store.latest_trade_date(session) if session is not None else None
 
     indices_raw = await _resolve(
-        session, trade_date, store.read_indices, DOMAIN_INDICES
+        session, trade_date, store.read_indices, DOMAIN_INDICES,
+        allow_provider=allow_provider,
     )
     breadth_raw = await _resolve(
-        session, trade_date, store.read_breadth, DOMAIN_BREADTH
+        session, trade_date, store.read_breadth, DOMAIN_BREADTH,
+        allow_provider=allow_provider,
     )
     limit_raw = await _resolve(
-        session, trade_date, store.read_limit_top, DOMAIN_LIMIT_UP
+        session, trade_date, store.read_limit_top, DOMAIN_LIMIT_UP,
+        allow_provider=allow_provider,
     )
 
     indices = [
@@ -110,7 +134,8 @@ async def build_overview(session: AsyncSession | None = None) -> OverviewOut:
 
     # 行业 TOP5 从真实 sector 数据取
     all_sectors = await _resolve(
-        session, trade_date, store.read_sectors, DOMAIN_SECTORS
+        session, trade_date, store.read_sectors, DOMAIN_SECTORS,
+        allow_provider=allow_provider,
     )
     sorted_desc = sorted(all_sectors, key=lambda s: s["pct"], reverse=True)
     sorted_asc = sorted(all_sectors, key=lambda s: s["pct"])

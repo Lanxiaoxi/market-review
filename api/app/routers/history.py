@@ -7,6 +7,9 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.auth import require_api_token
 from app.models.db import get_session
+from app.services import store
+from app.services.aggregator import build_overview
+from app.services.provider import ProviderError
 from app.services.snapshot_service import get_snapshot_by_date, save_daily_snapshot
 from app.schemas.overview import OverviewOut
 from app.cache import clear_all
@@ -19,11 +22,22 @@ async def get_history(
     dt: date = Query(alias="date"),
     session: AsyncSession = Depends(get_session),
 ):
-    """按日期返回历史收盘快照"""
+    """按日期返回历史总览
+
+    优先 L2 本地库按日聚合（零回源、当前 schema）；无本地数据时回退收盘快照；
+    两者皆无 → 404。非交易日自动吸附到最近的交易日（如周末 → 周五）。
+    """
+    try:
+        td = await store.latest_trade_date(session, ref=dt)
+        if td is not None:
+            return await build_overview(session, trade_date=td, allow_provider=False)
+    except ProviderError:
+        pass  # 本地无该日数据 → 尝试快照
+
     snap = await get_snapshot_by_date(session, dt)
-    if snap is None:
-        raise HTTPException(404, f"未找到 {dt.isoformat()} 的快照")
-    return snap
+    if snap is not None:
+        return snap
+    raise HTTPException(404, f"未找到 {dt.isoformat()} 的数据")
 
 
 @router.post("/history/backfill", dependencies=[Depends(require_api_token)])
