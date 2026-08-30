@@ -47,3 +47,22 @@ class FiftyTwoWeekOut(CamelModel):
     dates: list[str]    # "YYYY-MM-DD"（升序）
     new_high: list[int] # 每日创 52 周新高个股数
     new_low: list[int]  # 每日创 52 周新低个股数
+
+
+class BondYieldOut(CamelModel):
+    """中债国债收益率曲线序列（%，2/5/10/30 年期）"""
+
+    dates: list[str]
+    two_year: list[float | None]
+    five_year: list[float | None]
+    ten_year: list[float | None]
+    thirty_year: list[float | None]
+
+
+class TreasuryFuturesOut(CamelModel):
+    """国债期货主力连续日线"""
+
+    contract: str       # TS / TF / T / TL
+    name: str
+    dates: list[str]    # "YYYY-MM-DD"（升序）
+    closes: list[float]

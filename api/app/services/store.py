@@ -34,6 +34,7 @@ from app.models.market_data import (
     StockDaily,
     StockName,
     TradeCalendar,
+    BondYield,
 )
 from app.services.buckets import DIST_LABELS, bucketize, normalize_sparkline
 
@@ -705,6 +706,56 @@ async def read_intraday_day(session: AsyncSession, code: str, trade_date: date) 
         "prices": [r.price for r in rows],
         "amounts": [r.amount for r in rows],
     }
+
+
+async def save_bond_yield(
+    session: AsyncSession,
+    rows: Sequence[dict],
+    source: str = "",
+) -> int:
+    """rows: [{"trade_date": date, "two_year", "five_year", "ten_year", "thirty_year"}]（按日覆盖写）"""
+    if not rows:
+        return 0
+    dates = [_as_date(r["trade_date"]) for r in rows]
+    await session.execute(delete(BondYield).where(BondYield.trade_date.in_(dates)))
+    payload = [
+        {
+            "trade_date": d,
+            "two_year": _f(r.get("two_year")),
+            "five_year": _f(r.get("five_year")),
+            "ten_year": _f(r.get("ten_year")),
+            "thirty_year": _f(r.get("thirty_year")),
+            "updated_at": datetime.now(SHANGHAI_TZ),
+        }
+        for r, d in zip(rows, dates)
+    ]
+    await session.execute(BondYield.__table__.insert(), payload)
+    await session.commit()
+    return len(payload)
+
+
+async def read_bond_yield(session: AsyncSession, days: int) -> list[dict] | None:
+    """近 days 个交易日的国债收益率（2/5/10/30 年期，升序）；无数据返回 None"""
+    rows = (
+        await session.execute(
+            select(BondYield)
+            .order_by(BondYield.trade_date.desc())
+            .limit(days)
+        )
+    ).scalars().all()
+    if not rows:
+        return None
+    result = [
+        {
+            "trade_date": r.trade_date.isoformat(),
+            "two_year": r.two_year,
+            "five_year": r.five_year,
+            "ten_year": r.ten_year,
+            "thirty_year": r.thirty_year,
+        }
+        for r in sorted(rows, key=lambda x: x.trade_date)
+    ]
+    return result or None
 
 
 # ────────────────────────── series_cache 兜底 ──────────────────────────

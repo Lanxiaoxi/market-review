@@ -1,4 +1,4 @@
-"""图表数据路由 —— 期现对比 / 涨跌停家数 / 市场宽度（读本地 L2，零回源）"""
+"""图表数据路由 —— 期现对比 / 涨跌停家数 / 市场宽度 / 52周新高新低 / 国债（读本地 L2，零回源）"""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -11,6 +11,8 @@ from app.schemas.charts import (
     LimitCountsOut,
     BreadthSeriesOut,
     FiftyTwoWeekOut,
+    BondYieldOut,
+    TreasuryFuturesOut,
 )
 from app.services.provider import (
     fetch_domain,
@@ -26,6 +28,14 @@ FUTURES_CONTRACTS: dict[str, dict[str, str]] = {
     "IF": {"spot": "000300.SH", "name": "沪深300"},
     "IH": {"spot": "000016.SH", "name": "上证50"},
     "IM": {"spot": "000852.SH", "name": "中证1000"},
+}
+
+# 中金所国债期货合约 → 展示名
+TREASURY_CONTRACTS: dict[str, str] = {
+    "TS": "2年期国债期货",
+    "TF": "5年期国债期货",
+    "T": "10年期国债期货",
+    "TL": "30年期国债期货",
 }
 
 
@@ -183,3 +193,61 @@ async def get_52w_high_low(
     }
     charts_cache.set(cache_key, payload, DEFAULT_TTL)
     return FiftyTwoWeekOut(**payload)
+
+
+@router.get("/charts/bond-yield", response_model=BondYieldOut)
+async def get_bond_yield(
+    days: int = Query(60, ge=7, le=250),
+    session: AsyncSession = Depends(get_session),
+):
+    """中债国债收益率曲线（2/5/10/30 年期，%，近 days 个交易日，本地零回源）"""
+    cache_key = f"bond-yield:{days}"
+    cached = charts_cache.get(cache_key)
+    if cached is not None:
+        return BondYieldOut(**cached)
+
+    rows = await store.read_bond_yield(session, days)
+    if not rows:
+        raise HTTPException(502, "国债收益率数据为空，请稍后重试")
+
+    payload = {
+        "dates": [r["trade_date"] for r in rows],
+        "two_year": [r["two_year"] for r in rows],
+        "five_year": [r["five_year"] for r in rows],
+        "ten_year": [r["ten_year"] for r in rows],
+        "thirty_year": [r["thirty_year"] for r in rows],
+    }
+    charts_cache.set(cache_key, payload, DEFAULT_TTL)
+    return BondYieldOut(**payload)
+
+
+@router.get("/charts/treasury-futures", response_model=TreasuryFuturesOut)
+async def get_treasury_futures(
+    contract: str = Query("T", description="中金所国债期货: TS(2年) / TF(5年) / T(10年) / TL(30年)"),
+    days: int = Query(60, ge=7, le=250),
+    session: AsyncSession = Depends(get_session),
+):
+    """国债期货主力连续日线（本地 L2 优先，缺失回源 tushare）"""
+    key = contract.upper()
+    if key not in TREASURY_CONTRACTS:
+        raise HTTPException(422, f"不支持的合约: {contract}（可选 TS/TF/T/TL）")
+
+    cache_key = f"treasury-futures:{key}:{days}"
+    cached = charts_cache.get(cache_key)
+    if cached is not None:
+        return TreasuryFuturesOut(**cached)
+
+    series = await store.read_futures_series(session, key, days)
+    if series is None:
+        series = await fetch_domain(DOMAIN_FUTURES_MAIN, key, days)
+    if not series:
+        raise HTTPException(502, "国债期货数据为空，请稍后重试")
+
+    payload = {
+        "contract": key,
+        "name": TREASURY_CONTRACTS[key],
+        "dates": [r["date"] for r in series],
+        "closes": [r["close"] for r in series],
+    }
+    charts_cache.set(cache_key, payload, DEFAULT_TTL)
+    return TreasuryFuturesOut(**payload)

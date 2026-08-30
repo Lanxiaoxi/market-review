@@ -37,6 +37,7 @@ DOMAIN_INDEX_RANGE = "index_range"          # 指数日线区间（跨多日，�
 DOMAIN_SECTOR_RANGE = "sector_range"        # 行业日线区间（跨多日，批量回填用）
 DOMAIN_STOCK_NAMES = "stock_names"          # 全市场代码 → 名称映射
 DOMAIN_CALENDAR = "calendar"                # 交易日历（回填的基准，落库后不再回源）
+DOMAIN_BOND_YIELD = "bond_yield"            # 中债国债收益率曲线（CCDC，2/5/10/30 年期）
 
 DOMAINS = (
     DOMAIN_INDICES,
@@ -53,6 +54,7 @@ DOMAINS = (
     DOMAIN_SECTOR_RANGE,
     DOMAIN_STOCK_NAMES,
     DOMAIN_CALENDAR,
+    DOMAIN_BOND_YIELD,
 )
 
 # ─── 能力矩阵：每个域可用 Provider（按优先级排列，供 auto/降级使用）───
@@ -72,6 +74,7 @@ CAPABILITY: dict[str, list[str]] = {
     DOMAIN_SECTOR_RANGE: ["ths", "tushare"],
     DOMAIN_STOCK_NAMES: ["tushare"],
     DOMAIN_CALENDAR: ["tushare", "ths"],
+    DOMAIN_BOND_YIELD: ["ccdc"],
 }
 
 # ─── 硬编码映射表：每个数据域默认主源（必须属于该域能力矩阵）───
@@ -90,6 +93,7 @@ DOMAIN_PROVIDER: dict[str, str] = {
     DOMAIN_SECTOR_RANGE: "ths",
     DOMAIN_STOCK_NAMES: "tushare",
     DOMAIN_CALENDAR: "tushare",
+    DOMAIN_BOND_YIELD: "ccdc",
 }
 
 # ─── 数据域 → 协议方法名（域命名与取数语义解耦）───
@@ -108,6 +112,7 @@ DOMAIN_METHOD: dict[str, str] = {
     DOMAIN_SECTOR_RANGE: "fetch_sector_range",
     DOMAIN_STOCK_NAMES: "fetch_stock_names",
     DOMAIN_CALENDAR: "fetch_trade_calendar",
+    DOMAIN_BOND_YIELD: "fetch_bond_yield",
 }
 
 
@@ -193,6 +198,10 @@ class BaseProvider:
         """交易日历：返回 [date, ...]（升序，仅含开市日）"""
         raise ProviderError(f"{self.name} 不支持 calendar")
 
+    async def fetch_bond_yield(self, start, end) -> list[dict]:
+        """国债收益率曲线（CCDC 口径）：返回 [{trade_date, two_year, five_year, ten_year, thirty_year}]"""
+        raise ProviderError(f"{self.name} 不支持 bond_yield")
+
 
 # ─── 注册表 ───
 _instances: dict[str, BaseProvider] = {}
@@ -203,8 +212,12 @@ def _provider_classes() -> dict[str, type[BaseProvider]]:
     from app.services.tushare_provider import TushareProvider
     from app.services.ths_provider import ThsProvider
     from app.services.tencent_provider import TencentProvider
+    from app.services.ccdc_provider import CcdcProvider
 
-    return {c.name: c for c in (TushareProvider, ThsProvider, TencentProvider)}
+    return {
+        c.name: c
+        for c in (TushareProvider, ThsProvider, TencentProvider, CcdcProvider)
+    }
 
 
 def _validate_domain(domain: str):

@@ -25,6 +25,7 @@ from app.models.market_data import IndexDaily, SectorDaily
 from app.services import store
 from app.services.provider import (
     DOMAIN_BREADTH,
+    DOMAIN_BOND_YIELD,
     DOMAIN_CALENDAR,
     DOMAIN_FUTURES_MAIN,
     DOMAIN_INDEX_RANGE,
@@ -43,8 +44,8 @@ DAY_GAP = 0.25
 DOMAIN_GAP = 0.5
 # 单次回填最多补多少个交易日（防止误配触发全量拉取）
 MAX_BACKFILL_DAYS = 500
-# 期货主力合约
-FUTURES_CONTRACTS = ("IF", "IH", "IM")
+# 期货主力合约：股指（IF/IH/IM）+ 国债（TS 2年/TF 5年/T 10年/TL 30年）
+FUTURES_CONTRACTS = ("IF", "IH", "IM", "TS", "TF", "T", "TL")
 
 
 def _ymd(d: date) -> str:
@@ -186,17 +187,17 @@ async def backfill_sector_range(session: AsyncSession, start: date, end: date) -
 
 
 async def backfill_futures(session: AsyncSession, days: int = 60) -> int:
-    """股指期货主力连续（按区间拉，整段覆盖写）
+    """股指/国债期货主力连续（按区间拉，整段覆盖写）
 
-    ref_key 含当天日期 → 每个自然日最多拉一次，跨日自动重拉最新数据。
+    ref_key 按合约 + 当天日期 → 每个合约每个自然日最多拉一次，新增合约可独立补齐。
     """
     today = store.today_shanghai()
-    ref_key = f"{_ymd(today)}:{days}d"
-    if await store.is_fetched(session, DOMAIN_FUTURES_MAIN, ref_key):
-        return 0
 
     written = 0
     for contract in FUTURES_CONTRACTS:
+        ref_key = f"{contract}:{_ymd(today)}:{days}d"
+        if await store.is_fetched(session, DOMAIN_FUTURES_MAIN, ref_key):
+            continue
         try:
             series = await fetch_domain(DOMAIN_FUTURES_MAIN, contract, days)
         except ProviderError as e:
@@ -204,14 +205,52 @@ async def backfill_futures(session: AsyncSession, days: int = 60) -> int:
             continue
         n = await store.save_futures_daily(session, contract, series, source=DOMAIN_FUTURES_MAIN)
         written += n
+        await store.mark_fetched(
+            session, DOMAIN_FUTURES_MAIN, ref_key,
+            trade_date=today, source=DOMAIN_FUTURES_MAIN, rows_count=n,
+        )
         await asyncio.sleep(DOMAIN_GAP)
 
-    await store.mark_fetched(
-        session, DOMAIN_FUTURES_MAIN, ref_key,
-        trade_date=today, source=DOMAIN_FUTURES_MAIN, rows_count=written,
-    )
     if written:
         logger.info("[Backfill] 期货主力连续回填 %s 行", written)
+    return written
+
+
+# ────────────────────────── 国债收益率（中债 CCDC）──────────────────────────
+
+
+async def backfill_bond_yield(session: AsyncSession, start: date, end: date) -> int:
+    """按缺口回填中债国债收益率曲线（按年分段请求，避免大范围高频）
+
+    fetch_log 按日去重；每个缺失年份最多一次 POST，年份间插入 DOMAIN_GAP 间隔。
+    """
+    dates = await _dates_in(session, start, end)
+    missing = await store.missing_ref_keys(
+        session, DOMAIN_BOND_YIELD, [_ymd(d) for d in dates]
+    )
+    if not missing:
+        return 0
+    todo = sorted(date.fromisoformat(k) for k in missing)
+
+    written = 0
+    for y in sorted({d.year for d in todo}):
+        y_start = max(start, date(y, 1, 1))
+        y_end = min(end, date(y, 12, 31))
+        try:
+            rows = await fetch_domain(DOMAIN_BOND_YIELD, y_start, y_end)
+        except ProviderError as e:
+            logger.warning("[Backfill] 国债收益率 %s 年失败，跳过: %s", y, e)
+            continue
+        n = await store.save_bond_yield(session, rows, source=DOMAIN_BOND_YIELD)
+        for r in rows:
+            await store.mark_fetched(
+                session, DOMAIN_BOND_YIELD, _ymd(r["trade_date"]),
+                trade_date=r["trade_date"], source=DOMAIN_BOND_YIELD, rows_count=1,
+            )
+        written += n
+        await asyncio.sleep(DOMAIN_GAP)
+    if written:
+        logger.info("[Backfill] 国债收益率回填 %s 天", written)
     return written
 
 
@@ -294,6 +333,10 @@ async def backfill(
     await asyncio.sleep(DOMAIN_GAP)
 
     stats["futures"] = await backfill_futures(session, days=max(days, 60))
+    await asyncio.sleep(DOMAIN_GAP)
+
+    # 国债收益率：按缺口补（首次全量按年分段，日常仅最新几日）
+    stats["bond_yield"] = await backfill_bond_yield(session, start, end)
 
     # 分时固化：仅在当日已定格（收盘后）时执行
     if intraday_codes and store.is_settled(end):

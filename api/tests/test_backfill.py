@@ -27,7 +27,7 @@ async def test_backfill_fills_all_domains(session: AsyncSession, monkeypatch):
     assert stats["index_daily"] == 5
     assert stats["sector_daily"] == 5
     assert stats["stock_names"] == 6
-    assert stats["futures"] == 3 * len(TRADE_DAYS), "3 个合约 × 5 天"
+    assert stats["futures"] == len(backfill.FUTURES_CONTRACTS) * len(TRADE_DAYS), "全部期货合约（股指+国债）× 5 天"
 
     # 涨停家数序列：每天 2 只涨停 / 1 只跌停
     counts = await store.read_limit_counts(session, 5)
@@ -39,8 +39,8 @@ async def test_backfill_fills_all_domains(session: AsyncSession, monkeypatch):
     assert await store.read_sectors(session, LAST_DAY) is not None
     assert len(await store.read_futures_series(session, "IF", 60)) == 5
 
-    # 回源次数：日历 1 + 名称 1 + 个股日线 5 + 指数 1 + 板块 1 + 期货 3
-    assert len(calls) == 12, f"首次回填回源次数异常: {calls}"
+    # 回源次数：日历 1 + 名称 1 + 个股日线 5 + 指数 1 + 板块 1 + 期货 7（股指3+国债4）+ 国债收益率 1
+    assert len(calls) == 17, f"首次回填回源次数异常: {calls}"
 
 
 @pytest.mark.asyncio

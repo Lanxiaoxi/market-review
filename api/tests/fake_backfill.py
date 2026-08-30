@@ -129,6 +129,20 @@ async def fake_fetch_domain(domain: str, *args, **kwargs):
             for c in codes
         }
 
+    if domain == provider.DOMAIN_BOND_YIELD:
+        start, end = args
+        return [
+            {
+                "trade_date": d,
+                "two_year": 1.2 + i * 0.01,
+                "five_year": 1.4 + i * 0.01,
+                "ten_year": 1.7 + i * 0.01,
+                "thirty_year": 2.1 + i * 0.01,
+            }
+            for i, d in enumerate(TRADE_DAYS)
+            if start <= d <= end
+        ]
+
     raise AssertionError(f"fake_fetch_domain 未预期的域: {domain}")
 
 

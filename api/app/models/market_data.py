@@ -130,6 +130,22 @@ class IntradayBar(SQLModel, table=True):
     amount: float = Field(default=0, description="累计成交额（元）")
 
 
+class BondYield(SQLModel, table=True):
+    """中债国债收益率曲线（CCDC 口径，%）
+
+    每个交易日一行，仅存 2/5/10/30 年期四个期限；由每日回填任务拉取一次，零回源。
+    """
+
+    __tablename__ = "bond_yield"
+
+    trade_date: date = Field(primary_key=True)
+    two_year: Optional[float] = Field(default=None)
+    five_year: Optional[float] = Field(default=None)
+    ten_year: Optional[float] = Field(default=None)
+    thirty_year: Optional[float] = Field(default=None)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
 class FetchLog(SQLModel, table=True):
     """回源去重审计表（domain + ref_key 唯一 → 同一份数据只拉一次）
 
