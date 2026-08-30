@@ -555,6 +555,28 @@ async def read_limit_counts(session: AsyncSession, days: int) -> list[dict] | No
     ]
 
 
+async def read_breadth_series(session: AsyncSession, days: int) -> list[dict] | None:
+    """近 days 个交易日的市场宽度序列（上涨/平盘/下跌家数，直接读聚合表，零回源）"""
+    rows = (
+        await session.execute(
+            select(
+                MarketDailyAgg.trade_date,
+                MarketDailyAgg.up,
+                MarketDailyAgg.flat,
+                MarketDailyAgg.down,
+            )
+            .order_by(MarketDailyAgg.trade_date.desc())
+            .limit(days)
+        )
+    ).all()
+    if not rows:
+        return None
+    return [
+        {"trade_date": d.isoformat(), "up": up, "flat": flat, "down": down}
+        for d, up, flat, down in sorted(rows)
+    ]
+
+
 async def read_futures_series(
     session: AsyncSession, contract: str, days: int
 ) -> list[dict] | None:

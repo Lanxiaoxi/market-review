@@ -17,6 +17,7 @@ from app.schemas.charts import (
     ChartUpdateIn,
     IfBasisOut,
     LimitCountsOut,
+    BreadthSeriesOut,
 )
 from app.services.provider import (
     fetch_domain,
@@ -134,6 +135,34 @@ async def get_limit_counts(
     }
     charts_cache.set(cache_key, payload, DEFAULT_TTL)
     return LimitCountsOut(**payload)
+
+
+@router.get("/charts/breadth-series", response_model=BreadthSeriesOut)
+async def get_breadth_series(
+    days: int = Query(60, ge=7, le=250),
+    session: AsyncSession = Depends(get_session),
+):
+    """日线市场宽度序列（上涨/平盘/下跌家数，近 days 个交易日）
+
+    本地 market_daily_agg 直接聚合，命中即返回（零回源）。
+    """
+    cache_key = f"breadth-series:{days}"
+    cached = charts_cache.get(cache_key)
+    if cached is not None:
+        return BreadthSeriesOut(**cached)
+
+    rows = await store.read_breadth_series(session, days)
+    if not rows:
+        raise HTTPException(502, "市场宽度数据为空，请稍后重试")
+
+    payload = {
+        "dates": [r["trade_date"] for r in rows],
+        "up": [r["up"] for r in rows],
+        "flat": [r["flat"] for r in rows],
+        "down": [r["down"] for r in rows],
+    }
+    charts_cache.set(cache_key, payload, DEFAULT_TTL)
+    return BreadthSeriesOut(**payload)
 
 
 @router.get("/charts", response_model=list[ChartLibItemOut])

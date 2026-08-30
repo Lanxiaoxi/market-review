@@ -50,3 +50,12 @@ class LimitCountsOut(CamelModel):
     dates: list[str]     # "YYYY-MM-DD"（升序）
     limit_up: list[int]  # 每日涨停家数
     limit_down: list[int]  # 每日跌停家数
+
+
+class BreadthSeriesOut(CamelModel):
+    """日线市场宽度序列（上涨/平盘/下跌家数）"""
+
+    dates: list[str]   # "YYYY-MM-DD"（升序）
+    up: list[int]      # 每日上涨家数
+    flat: list[int]    # 每日平盘家数
+    down: list[int]    # 每日下跌家数
