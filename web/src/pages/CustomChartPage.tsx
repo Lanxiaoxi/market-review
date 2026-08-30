@@ -73,8 +73,11 @@ export default function CustomChartPage() {
   useChartLibQuery(); // 加载图表库到 store
   const { data: intraday } = useIntraday(["sh000001"]); // 上证指数分时（成交额）
   const [contract, setContract] = useState("IF"); // 期现对比合约（IF/IH/IM）
-  const { data: basis } = useIfBasis(contract, 60);
-  const { data: limitCounts } = useLimitCounts(60); // 日线涨跌停家数
+  // 时间范围：近7天 / 近30天 / 默认（60 个交易日，即当前维度），作用于下方两个日线序列图
+  const [range, setRange] = useState("default");
+  const days = range === "7d" ? 7 : range === "30d" ? 30 : 60;
+  const { data: basis } = useIfBasis(contract, days);
+  const { data: limitCounts } = useLimitCounts(days); // 日线涨跌停家数
 
   const charts = useChartLibStore((s) => s.charts);
   const barDist = charts.find((c) => c.id === "bar-dist");
@@ -93,10 +96,19 @@ export default function CustomChartPage() {
 
   return (
     <>
-      <PageHeader
-        title="自定义图表"
-        sub="我的行情统计图表"
-      />
+      <PageHeader title="自定义图表" sub="我的行情统计图表">
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>时间范围</span>
+        <Segmented
+          options={[
+            { label: "近7天", value: "7d" },
+            { label: "近30天", value: "30d" },
+            { label: "默认", value: "default" },
+          ]}
+          value={range}
+          onChange={setRange}
+          ariaLabel="图表时间范围"
+        />
+      </PageHeader>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         {/* 涨跌家数分布 */}
@@ -149,7 +161,7 @@ export default function CustomChartPage() {
             title="股指期货期现对比"
             actions={
               <>
-                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>现货 vs 中金所主力合约 · 日线</span>
+                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>现货 vs 中金所主力合约 · 近 {days} 个交易日</span>
                 <Segmented
                   options={[
                     { label: "沪深300", value: "IF" },
@@ -193,7 +205,7 @@ export default function CustomChartPage() {
             title="涨跌停家数"
             actions={
               <>
-                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>每日涨停/跌停 · 日线</span>
+                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>每日涨停/跌停 · 近 {days} 个交易日</span>
                 {limitCount && <PinButton id={limitCount.id} name={limitCount.name} type={limitCount.type} pinned={limitCount.pinned} />}
               </>
             }

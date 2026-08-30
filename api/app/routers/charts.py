@@ -53,7 +53,7 @@ def _align_series(
 @router.get("/charts/futures-basis", response_model=IfBasisOut)
 async def get_futures_basis(
     contract: str = Query("IF", description="中金所合约: IF(沪深300) / IH(上证50) / IM(中证1000)"),
-    days: int = Query(60, ge=10, le=250),
+    days: int = Query(60, ge=7, le=250),
     session: AsyncSession = Depends(get_session),
 ):
     """股指期货期现对比（日线）：现货指数 vs 中金所主力合约，基差率附随
@@ -99,7 +99,7 @@ async def get_futures_basis(
 
 @router.get("/charts/if-basis", response_model=IfBasisOut, include_in_schema=False)
 async def get_if_basis_alias(
-    days: int = Query(60, ge=10, le=250),
+    days: int = Query(60, ge=7, le=250),
     session: AsyncSession = Depends(get_session),
 ):
     """旧路径兼容：/charts/if-basis == /charts/futures-basis?contract=IF"""
@@ -108,7 +108,7 @@ async def get_if_basis_alias(
 
 @router.get("/charts/limit-counts", response_model=LimitCountsOut)
 async def get_limit_counts(
-    days: int = Query(60, ge=10, le=250),
+    days: int = Query(60, ge=7, le=250),
     session: AsyncSession = Depends(get_session),
 ):
     """日线涨停/跌停家数序列（近 days 个交易日）
