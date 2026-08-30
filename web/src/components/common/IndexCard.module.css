@@ -12,13 +12,17 @@
   overflow: hidden;
   transition:
     transform var(--dur-base) var(--ease-out),
-    border-color var(--dur-base) var(--ease-out);
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
   will-change: transform;
 }
 
+/* hover：上浮 + 放大（z-index 保证放大时盖住相邻卡片） */
 .card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px) scale(1.05);
   border-color: var(--border-hover);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  z-index: 2;
 }
 
 /* 左侧语义色条：替代 v1 的整圈彩色描边，降低视觉噪音 */
