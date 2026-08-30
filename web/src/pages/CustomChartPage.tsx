@@ -7,9 +7,11 @@ import Segmented from "@/components/common/Segmented";
 import BasisChart from "@/components/charts/BasisChart";
 import LimitCountChart from "@/components/charts/LimitCountChart";
 import BreadthSeriesChart from "@/components/charts/BreadthSeriesChart";
+import FiftyTwoWeekChart from "@/components/charts/FiftyTwoWeekChart";
 import { useIfBasis } from "@/hooks/useIfBasis";
 import { useLimitCounts } from "@/hooks/useLimitCounts";
 import { useBreadthSeries } from "@/hooks/useBreadthSeries";
+import { use52wHighLow } from "@/hooks/use52wHighLow";
 
 /** 时间范围选项：默认（60 个交易日）在左，近7天 / 近30天 依次 */
 const RANGE_OPTIONS = [
@@ -24,12 +26,15 @@ export default function CustomChartPage() {
   const [basisRange, setBasisRange] = useState("default");
   const [limitRange, setLimitRange] = useState("default");
   const [breadthRange, setBreadthRange] = useState("default");
+  const [hlRange, setHlRange] = useState("default");
   const basisDays = basisRange === "7d" ? 7 : basisRange === "30d" ? 30 : 60;
   const limitDays = limitRange === "7d" ? 7 : limitRange === "30d" ? 30 : 60;
   const breadthDays = breadthRange === "7d" ? 7 : breadthRange === "30d" ? 30 : 60;
+  const hlDays = hlRange === "7d" ? 7 : hlRange === "30d" ? 30 : 60;
   const { data: basis } = useIfBasis(contract, basisDays);
   const { data: limitCounts } = useLimitCounts(limitDays); // 日线涨跌停家数
   const { data: breadthSeries } = useBreadthSeries(breadthDays); // 日线市场宽度
+  const { data: hlData } = use52wHighLow(hlDays); // 52 周新高/新低
 
   return (
     <>
@@ -151,6 +156,41 @@ export default function CustomChartPage() {
           </div>
           {limitCounts && limitCounts.dates.length > 0 ? (
             <LimitCountChart data={limitCounts} height={300} />
+          ) : (
+            <PlaceholderCard text="暂无有效数据" />
+          )}
+        </BaseCard>
+
+        {/* 52周新高/新低（通栏） */}
+        <BaseCard
+          className="mr-enter"
+          style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 14, animationDelay: "180ms" }}
+        >
+          <CardHeader
+            title="52周新高新低"
+            actions={
+              <>
+                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>每日创 52 周新高/新低的个股家数 · 近 {hlDays} 个交易日</span>
+                <Segmented
+                  options={RANGE_OPTIONS}
+                  value={hlRange}
+                  onChange={setHlRange}
+                  ariaLabel="52周新高新低时间范围"
+                />
+              </>
+            }
+          />
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "var(--up)" }}>新高</span>
+            <span style={{ fontSize: 12, color: "var(--down)" }}>新低</span>
+            {hlData && hlData.dates.length > 0 && (
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                最新一日（{hlData.dates[hlData.dates.length - 1]}）：新高 {hlData.newHigh[hlData.newHigh.length - 1]} · 新低 {hlData.newLow[hlData.newLow.length - 1]}
+              </span>
+            )}
+          </div>
+          {hlData && hlData.dates.length > 0 ? (
+            <FiftyTwoWeekChart data={hlData} height={300} />
           ) : (
             <PlaceholderCard text="暂无有效数据" />
           )}

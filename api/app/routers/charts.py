@@ -10,6 +10,7 @@ from app.schemas.charts import (
     IfBasisOut,
     LimitCountsOut,
     BreadthSeriesOut,
+    FiftyTwoWeekOut,
 )
 from app.services.provider import (
     fetch_domain,
@@ -155,3 +156,30 @@ async def get_breadth_series(
     }
     charts_cache.set(cache_key, payload, DEFAULT_TTL)
     return BreadthSeriesOut(**payload)
+
+
+@router.get("/charts/52w-high-low", response_model=FiftyTwoWeekOut)
+async def get_52w_high_low(
+    days: int = Query(60, ge=7, le=250),
+    session: AsyncSession = Depends(get_session),
+):
+    """近 days 个交易日的 52 周新高/新低个股家数（滚动 250 日窗口，本地计算零回源）
+
+    首次计算全表窗口扫描约数秒，结果缓存 24h；窗口不足 250 日的早期日期按可用窗口计算。
+    """
+    cache_key = f"52w-high-low:{days}"
+    cached = charts_cache.get(cache_key)
+    if cached is not None:
+        return FiftyTwoWeekOut(**cached)
+
+    rows = await store.read_52w_high_low(session, days)
+    if not rows:
+        raise HTTPException(502, "52周新高新低数据为空，请稍后重试")
+
+    payload = {
+        "dates": [r["trade_date"] for r in rows],
+        "new_high": [r["new_high"] for r in rows],
+        "new_low": [r["new_low"] for r in rows],
+    }
+    charts_cache.set(cache_key, payload, DEFAULT_TTL)
+    return FiftyTwoWeekOut(**payload)

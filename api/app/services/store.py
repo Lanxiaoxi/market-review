@@ -19,7 +19,7 @@ import logging
 from datetime import date, datetime, timedelta
 from typing import Iterable, Sequence
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import SHANGHAI_TZ
@@ -609,6 +609,47 @@ async def read_index_history(
     if not rows:
         return None
     return [{"date": d.isoformat(), "close": c} for d, c in sorted(rows)]
+
+
+async def read_52w_high_low(session: AsyncSession, days: int) -> list[dict] | None:
+    """近 days 个交易日的 52 周新高/新低个股家数（滚动 250 日窗口，本地计算，零回源）
+
+    窗口不足 250 日的早期日期按可用窗口计算（数值偏高，随数据积累变准）；
+    全表一次窗口扫描约数秒，调用侧用 24h 缓存承接。
+    """
+    sql = text(
+        """
+        WITH ranked AS (
+          SELECT ts_code, trade_date, close,
+                 MAX(close) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS BETWEEN 249 PRECEDING AND 1 PRECEDING) AS max_prior,
+                 MIN(close) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS BETWEEN 249 PRECEDING AND 1 PRECEDING) AS min_prior
+          FROM stock_daily
+        )
+        SELECT trade_date,
+               SUM(CASE WHEN max_prior IS NOT NULL AND close > max_prior THEN 1 ELSE 0 END) AS new_high,
+               SUM(CASE WHEN min_prior IS NOT NULL AND close < min_prior THEN 1 ELSE 0 END) AS new_low
+        FROM ranked
+        WHERE trade_date IN (
+          SELECT trade_date FROM (
+            SELECT DISTINCT trade_date FROM stock_daily ORDER BY trade_date DESC LIMIT :days
+          )
+        )
+        GROUP BY trade_date
+        ORDER BY trade_date
+        """
+    )
+    result = await session.execute(sql, {"days": days})
+    rows = result.fetchall()
+    if not rows:
+        return None
+    return [
+        {
+            "trade_date": str(r.trade_date)[:10],
+            "new_high": int(r.new_high),
+            "new_low": int(r.new_low),
+        }
+        for r in rows
+    ]
 
 
 async def read_stock_sparkline(

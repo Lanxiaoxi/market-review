@@ -39,3 +39,11 @@ class BreadthSeriesOut(CamelModel):
     up: list[int]      # 每日上涨家数
     flat: list[int]    # 每日平盘家数
     down: list[int]    # 每日下跌家数
+
+
+class FiftyTwoWeekOut(CamelModel):
+    """近 N 日 52 周新高/新低个股家数序列"""
+
+    dates: list[str]    # "YYYY-MM-DD"（升序）
+    new_high: list[int] # 每日创 52 周新高个股数
+    new_low: list[int]  # 每日创 52 周新低个股数

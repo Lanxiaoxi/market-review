@@ -116,3 +116,10 @@ export interface BreadthSeriesData {
   flat: number[];    // 每日平盘家数
   down: number[];    // 每日下跌家数
 }
+
+/** 近 N 日 52 周新高/新低个股家数序列 */
+export interface FiftyTwoWeekData {
+  dates: string[];     // "YYYY-MM-DD"（升序）
+  newHigh: number[];   // 每日创 52 周新高个股数
+  newLow: number[];    // 每日创 52 周新低个股数
+}

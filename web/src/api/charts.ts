@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import type { IfBasisData, LimitCountsData, BreadthSeriesData } from "@/types/market";
+import type { IfBasisData, LimitCountsData, BreadthSeriesData, FiftyTwoWeekData } from "@/types/market";
 
 /** 股指期货期现对比（日线，近 days 个交易日；contract: IF/IH/IM） */
 export async function fetchFuturesBasis(contract: string, days = 60): Promise<IfBasisData> {
@@ -22,6 +22,15 @@ export async function fetchLimitCounts(days = 60): Promise<LimitCountsData> {
 /** 日线市场宽度序列（上涨/平盘/下跌家数，近 days 个交易日） */
 export async function fetchBreadthSeries(days = 60): Promise<BreadthSeriesData> {
   const { data } = await apiClient.get<BreadthSeriesData>("/charts/breadth-series", {
+    params: { days },
+    timeout: 30_000,
+  });
+  return data;
+}
+
+/** 近 days 个交易日的 52 周新高/新低个股家数（滚动 250 日窗口） */
+export async function fetch52wHighLow(days = 60): Promise<FiftyTwoWeekData> {
+  const { data } = await apiClient.get<FiftyTwoWeekData>("/charts/52w-high-low", {
     params: { days },
     timeout: 30_000,
   });
