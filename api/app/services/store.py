@@ -507,8 +507,22 @@ async def read_indices(
     return result or None
 
 
+def _sector_meta(items: list[SectorDaily]) -> dict:
+    """板块异动标记：连涨天数（截至最新日）+ 10 日新高"""
+    up_days = 0
+    for it in reversed(items):
+        if it.pct_chg and it.pct_chg > 0:
+            up_days += 1
+        else:
+            break
+    last10 = [i.close for i in items[-10:]]
+    latest_close = items[-1].close
+    new_high_10d = bool(last10) and latest_close >= max(last10)
+    return {"up_days": up_days, "new_high_10d": new_high_10d}
+
+
 async def read_sectors(session: AsyncSession, trade_date: date, lookback: int = 12) -> list[dict] | None:
-    """行业板块排名 + sparkline"""
+    """行业板块排名 + sparkline（当日涨跌幅 + 异动标记）"""
     dates = await recent_trade_dates(session, trade_date, lookback)
     rows = (
         await session.execute(select(SectorDaily).where(SectorDaily.trade_date.in_(dates)))
@@ -528,13 +542,70 @@ async def read_sectors(session: AsyncSession, trade_date: date, lookback: int = 
         latest = items[-1]
         result.append(
             {
+                "code": sector_code,
                 "name": latest.name,
                 "pct": round(latest.pct_chg, 2),
                 "leading": latest.leading or "—",
                 "sparkline": normalize_sparkline([i.close for i in items]),
+                **_sector_meta(items),
             }
         )
     return result or None
+
+
+async def read_sectors_range(session: AsyncSession, trade_date: date, n: int) -> list[dict] | None:
+    """行业板块 N 日区间涨幅排名（close[最新]/close[最新-N] - 1）
+
+    历史不足 n+1 日的板块跳过；附带当日异动标记与 sparkline（与 read_sectors 同构）。
+    """
+    dates = await recent_trade_dates(session, trade_date, n + 1)
+    rows = (
+        await session.execute(select(SectorDaily).where(SectorDaily.trade_date.in_(dates)))
+    ).scalars().all()
+    if not rows:
+        return None
+
+    by_code: dict[str, list[SectorDaily]] = {}
+    for r in rows:
+        by_code.setdefault(r.sector_code, []).append(r)
+
+    result = []
+    for sector_code, items in by_code.items():
+        items.sort(key=lambda x: x.trade_date)
+        if items[-1].trade_date != trade_date or len(items) < n + 1:
+            continue
+        latest = items[-1]
+        base = items[-(n + 1)].close
+        result.append(
+            {
+                "code": sector_code,
+                "name": latest.name,
+                "pct": round((latest.close / base - 1) * 100, 2) if base else 0.0,
+                "leading": latest.leading or "—",
+                "sparkline": normalize_sparkline([i.close for i in items]),
+                **_sector_meta(items),
+            }
+        )
+    return result or None
+
+
+async def read_sector_history(
+    session: AsyncSession, sector_code: str, days: int
+) -> list[dict] | None:
+    """单个板块近 days 日收盘（升序，末条带名称）；无数据返回 None"""
+    rows = (
+        await session.execute(
+            select(SectorDaily.trade_date, SectorDaily.close, SectorDaily.name)
+            .where(SectorDaily.sector_code == sector_code)
+            .order_by(SectorDaily.trade_date.desc())
+            .limit(days)
+        )
+    ).all()
+    if not rows:
+        return None
+    result = [{"date": d.isoformat(), "close": c} for d, c, _n in sorted(rows)]
+    result[-1]["name"] = rows[0][2]  # 最新一条的名称
+    return result
 
 
 async def read_limit_counts(session: AsyncSession, days: int) -> list[dict] | None:

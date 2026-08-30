@@ -73,6 +73,9 @@ def _sector_out(s: dict) -> SectorItemOut:
         pct=s["pct"],
         leading=s.get("leading", "—"),
         sparkline=s["sparkline"],
+        code=s.get("code", ""),
+        up_days=s.get("up_days", 0),
+        new_high_10d=s.get("new_high_10d", False),
     )
 
 
@@ -195,6 +198,17 @@ async def build_sectors(session: AsyncSession | None = None) -> list[SectorItemO
     """聚合行业板块排名（传入 session 时优先读 L2 持久层）"""
     trade_date = await store.latest_trade_date(session) if session is not None else None
     all_sectors = await _resolve(
-        session, trade_date, store.read_sectors, DOMAIN_SECTORS
+        session, trade_date, store.read_sectors, DOMAIN_SECTORS,
+        allow_provider=True,
+    )
+    return [_sector_out(s) for s in all_sectors]
+
+
+async def build_sectors_range(session: AsyncSession | None, n: int) -> list[SectorItemOut]:
+    """聚合行业板块 N 日区间涨幅排名（读 L2 持久层，不回源）"""
+    trade_date = await store.latest_trade_date(session) if session is not None else None
+    all_sectors = await _resolve(
+        session, trade_date, store.read_sectors_range, DOMAIN_SECTORS, n,
+        allow_provider=False,
     )
     return [_sector_out(s) for s in all_sectors]

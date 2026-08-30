@@ -46,6 +46,9 @@ export interface SectorItem {
   pct: number;
   leading: string;
   sparkline: number[];
+  code?: string;          // 板块代码（详情图用）
+  upDays?: number;        // 连涨天数（截至最新交易日）
+  newHigh10d?: boolean;   // 10 日新高
 }
 
 /** 今日总览数据 */

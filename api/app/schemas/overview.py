@@ -56,6 +56,9 @@ class SectorItemOut(CamelModel):
     pct: float
     leading: str
     sparkline: list[float]
+    code: str = ""           # 板块代码（详情图用）
+    up_days: int = 0         # 连涨天数（截至最新交易日）
+    new_high_10d: bool = False  # 10 日新高
 
 
 class OverviewOut(CamelModel):
