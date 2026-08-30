@@ -114,7 +114,7 @@ function MiniChart({ type }: { type: string }) {
       </svg>
     );
   }
-  // breadthSeries：上涨红 / 平盘灰 / 下跌绿 堆叠柱
+  // breadthSeries：上涨红 / 平盘灰 / 下跌绿 堆叠柱 + 上涨家数折线
   if (type === "breadthSeries") {
     const up = [14, 18, 16, 20, 17, 22, 19, 23, 20, 24];
     const flat = [6, 5, 7, 4, 6, 4, 5, 3, 5, 3];
@@ -128,6 +128,7 @@ function MiniChart({ type }: { type: string }) {
             <rect x={4 + i * 14} y={44 - h - flat[i] - down[i]} width="6" height={down[i]} rx="1" fill="var(--down)" />
           </g>
         ))}
+        <polyline points="7,30 21,26 35,28 49,24 63,27 77,22 91,25 105,21 119,24 133,20" stroke="var(--up)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }

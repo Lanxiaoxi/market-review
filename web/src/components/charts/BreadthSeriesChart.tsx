@@ -74,6 +74,16 @@ export default function BreadthSeriesChart({ data, height = 300 }: BreadthSeries
           itemStyle: { color: TOKENS.down },
           barWidth: "45%",
         },
+        {
+          type: "line" as const,
+          name: "上涨家数",
+          data: up,
+          smooth: true,
+          symbol: "none",
+          lineStyle: { width: 2, color: TOKENS.up },
+          itemStyle: { color: TOKENS.up },
+          z: 5,
+        },
       ],
     };
   }, [dates, up, flat, down]);
