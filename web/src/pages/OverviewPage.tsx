@@ -158,14 +158,14 @@ export default function OverviewPage() {
     ? `${data.date} · ${data.weekday ?? WEEKDAYS[new Date(data.date).getDay()]}`
     : "加载中…";
 
-  // ─── 指数分时对比（今日用真实分时；近5日用最近 5 个交易日分时拼接；近20日用日 K 收盘价） ───
+  // ─── 指数分时对比（今日用真实分时；近5日用最近 5 个交易日分时拼接） ───
   const indices = data?.indices ?? [];
   const idxByCode = (code: string) => indices.find((x) => x.code === code);
 
   // 拉取全部分时（今日 days=1，近5日 days=5），显示集由 selectedIndices 决定
   const { data: intraday } = useIntraday(
     INDEX_SERIES.map((d) => d.tencent),
-    period !== "20d" && !viewDate, // 历史回放不拉分时（分时是当日数据）
+    !viewDate, // 历史回放不拉分时（分时是当日数据）
     period === "5d" ? 5 : 1
   );
 
@@ -207,22 +207,11 @@ export default function OverviewPage() {
     };
   });
 
-  const series20d = visibleSeries.map((def) => ({
-    name: def.name,
-    // 用真实收盘价算涨跌幅（sparkline 是归一化坐标，直接算百分比会失真）
-    data: toPctChange(idxByCode(def.code)?.closes ?? []),
-    color: def.color,
-  }));
-
-  const intradaySeries = period === "today" ? todaySeries : period === "5d" ? series5d : series20d;
+  const intradaySeries = period === "today" ? todaySeries : series5d;
   // 时间轴标签必须与数据点一一对应（ECharts category 轴按索引对齐，长度不等会丢点）
   const todayTimes = intraday?.codes["sh000001"]?.times;
   const todayLen = intraday?.codes["sh000001"]?.prices.length ?? 12;
   const todayLabels = todayTimes && todayTimes.length > 0 ? todayTimes : sessionLabels(todayLen);
-  const sparkLen = idxByCode("000001")?.closes?.length ?? 12;
-  const labels20d = Array.from({ length: sparkLen }, (_, i) =>
-    i === sparkLen - 1 ? "今日" : `T-${sparkLen - 1 - i}`
-  );
 
   // 近5日：拼接时间轴（"MM-DD HH:MM"），标签只显示每日边界（日期）
   const fiveDayTimes = intraday?.codes["sh000001"]?.times ?? [];
@@ -232,11 +221,9 @@ export default function OverviewPage() {
   const timeLabels =
     period === "today"
       ? todayLabels
-      : period === "5d"
-        ? viewDate
-          ? ["T-4", "T-3", "T-2", "T-1", "今日"]
-          : fiveDayTimes
-        : labels20d;
+      : viewDate
+        ? ["T-4", "T-3", "T-2", "T-1", "今日"]
+        : fiveDayTimes;
   const labelAt = period === "5d" && !viewDate && fiveDayTimes.length > 0 ? fiveDayLabelAt : undefined;
 
   // 无有效数据：整页占位（保留标题栏）
@@ -339,7 +326,7 @@ export default function OverviewPage() {
             title="指数分时对比"
             actions={
               <Segmented
-                options={[{ label: "今日", value: "today" }, { label: "近5日", value: "5d" }, { label: "近20日", value: "20d" }]}
+                options={[{ label: "今日", value: "today" }, { label: "近5日", value: "5d" }]}
                 value={period}
                 onChange={setPeriod}
               />
