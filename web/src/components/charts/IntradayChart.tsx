@@ -56,6 +56,8 @@ export default function IntradayChart({
       },
       series: series.map((s, i) => ({
         type: "line" as const,
+        // 稳定 id：notMerge=false 合并时按 id 对账，取消勾选后旧系列才会被移除
+        id: s.name,
         name: s.name,
         data: s.data,
         smooth: false,
