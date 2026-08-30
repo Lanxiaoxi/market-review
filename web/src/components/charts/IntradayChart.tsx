@@ -43,7 +43,7 @@ export default function IntradayChart({
         splitLine: { lineStyle: { color: TOKENS.grid } },
         axisLabel: {
           fontSize: 11,
-          formatter: (v: number) => `${v}%`,
+          formatter: (v: number) => `${Number(v.toFixed(2))}%`,
         },
       },
       tooltip: {
@@ -52,7 +52,7 @@ export default function IntradayChart({
         backgroundColor: "#fff",
         borderColor: TOKENS.gridStrong,
         textStyle: { color: TOKENS.ink },
-        valueFormatter: (v: unknown) => `${v}%`,
+        valueFormatter: (v: unknown) => `${Number(v).toFixed(2)}%`,
       },
       series: series.map((s, i) => ({
         type: "line" as const,
