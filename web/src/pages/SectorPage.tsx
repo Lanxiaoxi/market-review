@@ -42,11 +42,13 @@ export default function SectorPage() {
   // 动量区间：1=当日 / 5=近5日 / 10=近10日 / 20=近20日
   const [range, setRange] = useState(1);
   const [selected, setSelected] = useState<string | null>(null);
+  // 详情时间范围：30 / 90 / 250 日
+  const [detailDays, setDetailDays] = useState(90);
   const { data } = useSectors("pct", range);
-  const { data: history } = useSectorHistory(selected);
+  const { data: history } = useSectorHistory(selected, detailDays);
   const detailRef = useRef<HTMLDivElement>(null);
 
-  // 点击板块后自动滚动到详情卡（表格 90 行较长，卡片在下方可能超出视口）
+  // 点击板块后自动滚动到详情卡（卡片在页面上方）
   useEffect(() => {
     if (selected && detailRef.current) {
       detailRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -58,6 +60,42 @@ export default function SectorPage() {
   return (
     <>
       <PageHeader title="板块轮动" sub="捕捉当日热点与异动 · 申万一级行业涨跌排名" />
+
+      {/* 板块详情（点击行后出现在上方） */}
+      {selected && history && (
+        <div ref={detailRef} style={{ scrollMarginTop: 16 }}>
+          <BaseCard
+            className="mr-enter"
+            style={{ display: "flex", flexDirection: "column", gap: 14, animationDelay: "0ms" }}
+          >
+            <CardHeader
+              title={history.name}
+              hint={`近 ${history.dates.length} 个交易日收盘`}
+              actions={
+                <>
+                  <Segmented
+                    options={[
+                      { label: "近30日", value: "30" },
+                      { label: "近90日", value: "90" },
+                      { label: "近250日", value: "250" },
+                    ]}
+                    value={String(detailDays)}
+                    onChange={(v) => setDetailDays(Number(v))}
+                    ariaLabel="详情时间范围"
+                  />
+                  <span
+                    style={{ fontSize: 12, color: "var(--muted)", cursor: "pointer", padding: "3px 8px" }}
+                    onClick={() => setSelected(null)}
+                  >
+                    收起 ×
+                  </span>
+                </>
+              }
+            />
+            <SectorHistoryChart data={history} />
+          </BaseCard>
+        </div>
+      )}
 
       <BaseCard
         className="mr-enter"
@@ -133,30 +171,6 @@ export default function SectorPage() {
           )}
         </DataTable>
       </BaseCard>
-
-      {/* 板块详情：历史收盘走势 */}
-      {selected && history && (
-        <div ref={detailRef} style={{ scrollMarginTop: 16 }}>
-          <BaseCard
-            className="mr-enter"
-            style={{ display: "flex", flexDirection: "column", gap: 14, animationDelay: "60ms" }}
-          >
-            <CardHeader
-              title={history.name}
-              hint={`近 ${history.dates.length} 个交易日收盘`}
-              actions={
-                <span
-                  style={{ fontSize: 12, color: "var(--muted)", cursor: "pointer", padding: "3px 8px" }}
-                  onClick={() => setSelected(null)}
-                >
-                  收起 ×
-                </span>
-              }
-            />
-            <SectorHistoryChart data={history} />
-          </BaseCard>
-        </div>
-      )}
     </>
   );
 }
