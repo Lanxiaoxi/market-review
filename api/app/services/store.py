@@ -454,6 +454,7 @@ async def read_breadth(session: AsyncSession, trade_date: date) -> dict | None:
         "down_pct": agg.down_pct,
         "flat_pct": agg.flat_pct,
         "turnover": _fmt_turnover(agg.turnover_yi),
+        "turnover_yi": agg.turnover_yi,
         "limit_up_count": agg.limit_up,
         "limit_down_count": agg.limit_down,
         "trade_date": trade_date.isoformat(),

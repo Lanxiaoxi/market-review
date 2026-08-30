@@ -11,6 +11,7 @@ session 为 None 时退化为纯 provider 取数（兼容不落库的调用场�
 """
 
 import datetime
+import re
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -75,6 +76,19 @@ def _sector_out(s: dict) -> SectorItemOut:
     )
 
 
+def _turnover_str_to_yi(s: str) -> float | None:
+    """格式化成交额字符串 → 亿元（"2.12万亿" → 21200，"8567亿" → 8567）"""
+    if not s:
+        return None
+    m = re.match(r"^([\d.]+)万亿$", s.strip())
+    if m:
+        return float(m.group(1)) * 1e4
+    m = re.match(r"^([\d.]+)亿$", s.strip())
+    if m:
+        return float(m.group(1))
+    return None
+
+
 async def build_overview(
     session: AsyncSession | None = None,
     trade_date: datetime.date | None = None,
@@ -118,6 +132,19 @@ async def build_overview(
     dist = [DistBucketOut(label=d["label"], value=d["value"]) for d in dist_raw]
     _bucket_value = lambda label: next((d.value for d in dist if d.label == label), 0)
 
+    # 较上一交易日成交额变化（亿元 / %）：本地聚合表取上一交易日，零回源
+    turnover_change_yi: float | None = None
+    turnover_change_pct: float | None = None
+    if session is not None and trade_date is not None:
+        prev_dates = await store.recent_trade_dates(session, trade_date, 2)
+        if len(prev_dates) >= 2:
+            prev_breadth = await store.read_breadth(session, prev_dates[0])
+            cur_yi = breadth_raw.get("turnover_yi") or _turnover_str_to_yi(breadth_raw.get("turnover", ""))
+            prev_yi = (prev_breadth or {}).get("turnover_yi")
+            if cur_yi is not None and prev_yi:
+                turnover_change_yi = round(cur_yi - prev_yi, 2)
+                turnover_change_pct = round((cur_yi - prev_yi) / prev_yi * 100, 2)
+
     breadth = MarketBreadthOut(
         up=breadth_raw["up"],
         down=breadth_raw["down"],
@@ -130,6 +157,8 @@ async def build_overview(
         limit_down_count=_bucket_value("跌停") or breadth_raw.get("limit_down_count", 0),
         limit_up_top=[LimitUpStockOut(**lt) for lt in limit_raw],
         dist=dist,
+        turnover_change_yi=turnover_change_yi,
+        turnover_change_pct=turnover_change_pct,
     )
 
     # 行业 TOP5 从真实 sector 数据取

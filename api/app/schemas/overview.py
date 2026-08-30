@@ -44,6 +44,9 @@ class MarketBreadthOut(CamelModel):
     limit_down_count: int
     limit_up_top: list[LimitUpStockOut]
     dist: list[DistBucketOut] = []   # 涨跌家数分布（7 档）
+    # 较上一交易日成交额变化（亿元 / %），无上一交易日数据时为 None
+    turnover_change_yi: float | None = None
+    turnover_change_pct: float | None = None
 
 
 class SectorItemOut(CamelModel):

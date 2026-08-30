@@ -29,6 +29,8 @@ export interface MarketBreadth {
   limitDownCount: number;
   limitUpTop: LimitUpStock[];
   dist: DistBucket[]; // 7 档分布（后端真实统计）
+  turnoverChangeYi?: number | null;   // 较上一交易日成交额变化（亿元）
+  turnoverChangePct?: number | null;  // 较上一交易日成交额变化（%）
 }
 
 /** 涨停个股 */

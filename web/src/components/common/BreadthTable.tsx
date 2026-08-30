@@ -192,6 +192,31 @@ export default function BreadthTable({ breadth, showTurnover = false }: BreadthT
                 >
                   <AnimatedWithUnit text={turnoverToYi(breadth?.turnover)} />
                 </span>
+                {breadth?.turnoverChangeYi != null && breadth?.turnoverChangePct != null && (
+                  <span
+                    className="num"
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color:
+                        breadth.turnoverChangeYi > 0
+                          ? "var(--up)"
+                          : breadth.turnoverChangeYi < 0
+                            ? "var(--down)"
+                            : "var(--muted)",
+                    }}
+                  >
+                    较上一交易日{" "}
+                    {breadth.turnoverChangeYi > 0
+                      ? "+"
+                      : breadth.turnoverChangeYi < 0
+                        ? "-"
+                        : ""}
+                    {Math.abs(breadth.turnoverChangeYi).toLocaleString("zh-CN", { maximumFractionDigits: 0 })}亿
+                    （{breadth.turnoverChangeYi > 0 ? "+" : ""}
+                    {breadth.turnoverChangePct.toFixed(2)}%）
+                  </span>
+                )}
               </div>
               <div style={{ display: "flex", alignItems: "stretch" }}>
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
