@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PageHeader from "@/components/layout/PageHeader";
 import CardHeader from "@/components/layout/CardHeader";
 import BaseCard from "@/components/common/BaseCard";
@@ -44,6 +44,14 @@ export default function SectorPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const { data } = useSectors("pct", range);
   const { data: history } = useSectorHistory(selected);
+  const detailRef = useRef<HTMLDivElement>(null);
+
+  // 点击板块后自动滚动到详情卡（表格 90 行较长，卡片在下方可能超出视口）
+  useEffect(() => {
+    if (selected && detailRef.current) {
+      detailRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [selected]);
 
   const rangeLabel = range === 1 ? "当日" : `近${range}日`;
 
@@ -128,24 +136,26 @@ export default function SectorPage() {
 
       {/* 板块详情：历史收盘走势 */}
       {selected && history && (
-        <BaseCard
-          className="mr-enter"
-          style={{ display: "flex", flexDirection: "column", gap: 14, animationDelay: "60ms" }}
-        >
-          <CardHeader
-            title={history.name}
-            hint={`近 ${history.dates.length} 个交易日收盘`}
-            actions={
-              <span
-                style={{ fontSize: 12, color: "var(--muted)", cursor: "pointer", padding: "3px 8px" }}
-                onClick={() => setSelected(null)}
-              >
-                收起 ×
-              </span>
-            }
-          />
-          <SectorHistoryChart data={history} />
-        </BaseCard>
+        <div ref={detailRef} style={{ scrollMarginTop: 16 }}>
+          <BaseCard
+            className="mr-enter"
+            style={{ display: "flex", flexDirection: "column", gap: 14, animationDelay: "60ms" }}
+          >
+            <CardHeader
+              title={history.name}
+              hint={`近 ${history.dates.length} 个交易日收盘`}
+              actions={
+                <span
+                  style={{ fontSize: 12, color: "var(--muted)", cursor: "pointer", padding: "3px 8px" }}
+                  onClick={() => setSelected(null)}
+                >
+                  收起 ×
+                </span>
+              }
+            />
+            <SectorHistoryChart data={history} />
+          </BaseCard>
+        </div>
       )}
     </>
   );
