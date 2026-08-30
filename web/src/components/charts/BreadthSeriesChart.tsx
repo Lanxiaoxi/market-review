@@ -9,7 +9,7 @@ interface BreadthSeriesChartProps {
 
 /**
  * 日线市场宽度：上涨/平盘/下跌家数堆叠柱（红/灰/绿，与首页市场宽度同语义）。
- * 折线为「上涨占比」= 上涨家数 ÷（上涨+下跌），右轴 0–100%，50% 为多空平衡。
+ * 折线为「上涨/下跌」= 上涨家数 ÷ 下跌家数（涨跌比，右轴），1 为多空平衡。
  */
 export default function BreadthSeriesChart({ data, height = 300 }: BreadthSeriesChartProps) {
   const { dates, up, flat, down } = data;
@@ -19,11 +19,8 @@ export default function BreadthSeriesChart({ data, height = 300 }: BreadthSeries
     const step = Math.max(1, Math.ceil(n / 6));
     const showIdx = (i: number) => i === 0 || i === n - 1 || i % step === 0;
 
-    // 上涨占比（%）：上涨 ÷ (上涨+下跌)，分母为 0 时按 0 处理
-    const upRatio = up.map((u, i) => {
-      const denom = u + down[i];
-      return denom > 0 ? (u / denom) * 100 : 0;
-    });
+    // 涨跌比 = 上涨 ÷ 下跌；无下跌时按 99（极端强势）处理
+    const upDownRatio = up.map((u, i) => (down[i] > 0 ? u / down[i] : 99));
 
     return {
       grid: { top: 28, right: 44, bottom: 20, left: 44 },
@@ -52,10 +49,12 @@ export default function BreadthSeriesChart({ data, height = 300 }: BreadthSeries
         },
         {
           type: "value" as const,
-          min: 0,
-          max: 100,
+          scale: true,
           splitLine: { show: false },
-          axisLabel: { fontSize: 11, formatter: (v: number) => `${v}%` },
+          axisLabel: {
+            fontSize: 11,
+            formatter: (v: number) => `${Number(v.toFixed(2))}`,
+          },
         },
       ],
       tooltip: {
@@ -91,15 +90,15 @@ export default function BreadthSeriesChart({ data, height = 300 }: BreadthSeries
         },
         {
           type: "line" as const,
-          name: "上涨占比",
-          data: upRatio,
+          name: "上涨/下跌",
+          data: upDownRatio,
           yAxisIndex: 1,
           smooth: true,
           symbol: "none",
           lineStyle: { width: 2, color: TOKENS.ink },
           itemStyle: { color: TOKENS.ink },
           tooltip: {
-            valueFormatter: (v: unknown) => `${Number(v).toFixed(1)}%`,
+            valueFormatter: (v: unknown) => `${Number(v).toFixed(2)}`,
           },
           z: 5,
         },
