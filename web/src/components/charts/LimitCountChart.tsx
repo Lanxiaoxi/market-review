@@ -59,6 +59,18 @@ export default function LimitCountChart({ data, height = 300 }: LimitCountChartP
             color: TOKENS.up,
             formatter: (p: { value: number }) => (p.value > 0 ? String(p.value) : ""),
           },
+          // 涨停家数参考线：y = 80
+          markLine: {
+            symbol: "none",
+            data: [{ yAxis: 80 }],
+            lineStyle: { color: TOKENS.muted, type: "dashed" as const, width: 1 },
+            label: {
+              formatter: "80",
+              position: "end" as const,
+              fontSize: 10,
+              color: TOKENS.muted,
+            },
+          },
         },
         {
           type: "bar" as const,
