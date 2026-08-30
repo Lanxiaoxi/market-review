@@ -25,12 +25,19 @@ const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "�
 const HISTORY_START = "2025-08-19";
 const shanghaiToday = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
 
-/** 分时对比图的三条线：代码显式映射，避免按数组下标取数错位 */
+/** 分时对比可选指数（7 只 A 股，均有腾讯分钟线；中证2000/港股无分钟线不提供） */
 const INDEX_SERIES = [
   { name: "上证指数", code: "000001", tencent: "sh000001", color: TOKENS.ink },
-  { name: "沪深300", code: "000300", tencent: "sh000300", color: TOKENS.accent },
-  { name: "创业板指", code: "399006", tencent: "sz399006", color: TOKENS.seriesPurple },
+  { name: "上证50", code: "000016", tencent: "sh000016", color: TOKENS.accent },
+  { name: "沪深300", code: "000300", tencent: "sh000300", color: TOKENS.seriesPurple },
+  { name: "中证500", code: "000905", tencent: "sh000905", color: "#c97b2d" },
+  { name: "创业板指", code: "399006", tencent: "sz399006", color: "#1f9d8a" },
+  { name: "科创50", code: "000688", tencent: "sh000688", color: "#b048c8" },
+  { name: "中证1000", code: "000852", tencent: "sh000852", color: "#2f8fd6" },
 ];
+
+/** 默认显示的指数（上证 + 创业板），可勾选增删 */
+const DEFAULT_SELECTED = ["000001", "399006"];
 
 /**
  * 归一化为「相对首个点的涨跌幅（%）」：三条指数线共享同一比例尺，可真实对比。
@@ -134,6 +141,17 @@ export default function OverviewPage() {
 
   // T7.2: 分段控件状态（只影响本卡）
   const [period, setPeriod] = useState("today");
+  // 分时对比显示的指数（默认上证 + 创业板；勾选 chips 增删，至少保留一个）
+  const [selectedIndices, setSelectedIndices] = useState<string[]>(DEFAULT_SELECTED);
+  const visibleSeries = INDEX_SERIES.filter((s) => selectedIndices.includes(s.code));
+  const toggleIndex = (code: string) => {
+    setSelectedIndices((prev) => {
+      if (prev.includes(code)) {
+        return prev.length > 1 ? prev.filter((c) => c !== code) : prev;
+      }
+      return [...prev, code];
+    });
+  };
 
   // 日期显示：优先用后端 weekday（历史快照也正确），缺失时本地推算
   const dateStr = data
@@ -144,6 +162,7 @@ export default function OverviewPage() {
   const indices = data?.indices ?? [];
   const idxByCode = (code: string) => indices.find((x) => x.code === code);
 
+  // 每天拉取全部指数分时（8 只 A 股），显示集由 selectedIndices 决定，切换无需重新请求
   const { data: intraday } = useIntraday(
     INDEX_SERIES.map((d) => d.tencent),
     period === "today" && !viewDate // 历史回放不拉实时分时（分时是当日数据）
@@ -151,7 +170,7 @@ export default function OverviewPage() {
 
   // 今日：仅使用真实分时；无数据则为空数组（页面显示「暂无有效数据」）。
   // 历史回放时强制忽略 intraday（react-query 停用不会清缓存，否则会残留最新日分时）
-  const todaySeries = INDEX_SERIES.map((def) => {
+  const todaySeries = visibleSeries.map((def) => {
     const intra = !viewDate ? intraday?.codes[def.tencent] : undefined;
     return {
       name: def.name,
@@ -160,12 +179,12 @@ export default function OverviewPage() {
     };
   });
 
-  const series5d = INDEX_SERIES.map((def) => ({
+  const series5d = visibleSeries.map((def) => ({
     name: def.name,
     data: toPctChange(idxByCode(def.code)?.sparkline.slice(-5) ?? [14, 14, 14, 14, 14]),
     color: def.color,
   }));
-  const series20d = INDEX_SERIES.map((def) => ({
+  const series20d = visibleSeries.map((def) => ({
     name: def.name,
     data: toPctChange(idxByCode(def.code)?.sparkline ?? [14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14]),
     color: def.color,
@@ -293,17 +312,36 @@ export default function OverviewPage() {
               />
             }
           />
-          {/* v2 图例：色线 + 文字，辨识度高于纯文字 */}
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            {INDEX_SERIES.map((s) => (
-              <span
-                key={s.code}
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted)" }}
-              >
-                <span style={{ width: 12, height: 3, borderRadius: 2, background: s.color }} />
-                {s.name}
-              </span>
-            ))}
+          {/* 指数选择 chips：勾选显示哪些指数（色线即图例，点击增删） */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+            {INDEX_SERIES.map((s) => {
+              const on = selectedIndices.includes(s.code);
+              return (
+                <button
+                  key={s.code}
+                  onClick={() => toggleIndex(s.code)}
+                  title={on ? `取消显示 ${s.name}` : `显示 ${s.name}`}
+                  aria-pressed={on}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "3px 10px",
+                    borderRadius: 9999,
+                    border: on ? "1px solid var(--accent)" : "1px solid var(--border)",
+                    background: on ? "var(--active-bg)" : "var(--chip-bg)",
+                    fontSize: 12,
+                    color: on ? "var(--accent)" : "var(--muted)",
+                    fontFamily: "inherit",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <span style={{ width: 12, height: 3, borderRadius: 2, background: s.color }} />
+                  {s.name}
+                </button>
+              );
+            })}
           </div>
           {period === "today" && !todaySeries.some((s) => s.data.length > 0) ? (
             <PlaceholderCard

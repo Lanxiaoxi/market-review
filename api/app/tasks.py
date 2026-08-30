@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 # 显式指定上海时区：A 股 15:35 收盘快照不随服务器时区漂移
 scheduler = AsyncIOScheduler(timezone="Asia/Shanghai")
 
-# 收盘后固化的分时代码（腾讯行情代码，与指数卡一一对应）
+# 收盘后固化的分时代码（腾讯分钟线可用的 7 只 A 股指数；
+# 中证2000 sh932000 腾讯无分钟线、港股不走本接口，故不在此列）
 INTRADAY_CODES = [
     "sh000001",
     "sh000016",
@@ -28,7 +29,6 @@ INTRADAY_CODES = [
     "sz399006",
     "sh000688",
     "sh000852",
-    "sh932000",
 ]
 
 
