@@ -1,6 +1,6 @@
 # 前后端合并镜像（可选部署方式）
 # 构建：docker build -t market-review .
-# 运行：docker run -d -p 8000:8000 -v market-data:/app/api/data -e TUSHARE_TOKEN=xxx market-review
+# 运行：docker run -d -p 8668:8668 -v market-data:/app/api/data -e TUSHARE_TOKEN=xxx market-review
 
 # ── 构建阶段：前端 ──
 FROM node:20-alpine AS web-build
@@ -23,5 +23,5 @@ COPY --from=api-build /app/api/.venv .venv
 COPY api/ ./
 COPY --from=web-build /build/web/dist /app/web/dist
 
-EXPOSE 8000
-CMD [".venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 8668
+CMD [".venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8668"]

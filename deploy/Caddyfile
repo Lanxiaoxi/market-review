@@ -16,7 +16,7 @@ your-domain.com {
 
     # 后端 API 反向代理
     handle /api/* {
-        reverse_proxy 127.0.0.1:8000
+        reverse_proxy 127.0.0.1:8668
     }
 
     # 静态文件
