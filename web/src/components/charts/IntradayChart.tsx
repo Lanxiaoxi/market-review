@@ -26,6 +26,13 @@ export default function IntradayChart({
         .map((t) => timeLabels.indexOf(t))
         .filter((i) => i >= 0)
     );
+    // 正负对称的 Y 轴：以全部数据的最大绝对值 +15% 余量定上下限，0% 基线恒在正中
+    const maxAbs = Math.max(
+      0,
+      0.1,
+      ...series.flatMap((s) => s.data).map(Math.abs)
+    );
+    const bound = maxAbs * 1.15;
     return {
       grid: { top: 8, right: 36, bottom: 20, left: 44 },
       xAxis: {
@@ -40,6 +47,8 @@ export default function IntradayChart({
       yAxis: {
         type: "value" as const,
         scale: true,
+        min: -bound,
+        max: bound,
         splitLine: { lineStyle: { color: TOKENS.grid } },
         axisLabel: {
           fontSize: 11,
