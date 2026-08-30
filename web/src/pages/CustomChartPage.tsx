@@ -10,50 +10,6 @@ import BreadthSeriesChart from "@/components/charts/BreadthSeriesChart";
 import { useIfBasis } from "@/hooks/useIfBasis";
 import { useLimitCounts } from "@/hooks/useLimitCounts";
 import { useBreadthSeries } from "@/hooks/useBreadthSeries";
-import { useChartLibQuery, useToggleChartPin } from "@/hooks/useChartLib";
-import { useChartLibStore } from "@/stores/chartLib";
-
-/** 钉选按钮（pill 样式，状态切换） */
-function PinButton({
-  id,
-  name,
-  type,
-  pinned,
-}: {
-  id: string;
-  name: string;
-  type: string;
-  pinned: boolean;
-}) {
-  const toggle = useToggleChartPin();
-
-  return (
-    <button
-      onClick={() => toggle.mutate({ id, name, type, pinned })}
-      title={pinned ? "取消钉选" : "钉选到总览页"}
-      aria-label={pinned ? `取消钉选 ${name}` : `钉选 ${name} 到总览页`}
-      aria-pressed={pinned}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        padding: "3px 10px",
-        borderRadius: 9999,
-        border: pinned ? "1px solid var(--accent)" : "1px solid var(--border)",
-        background: pinned ? "var(--active-bg)" : "var(--chip-bg)",
-        fontSize: 12,
-        color: pinned ? "var(--accent)" : "var(--muted)",
-        fontFamily: "inherit",
-        cursor: "pointer",
-        whiteSpace: "nowrap",
-        opacity: toggle.isPending ? 0.6 : 1,
-      }}
-    >
-      <span style={{ width: 6, height: 6, borderRadius: 9999, background: pinned ? "var(--accent)" : "var(--series-base)" }} />
-      {pinned ? "已钉选" : "钉选"}
-    </button>
-  );
-}
 
 /** 时间范围选项：默认（60 个交易日）在左，近7天 / 近30天 依次 */
 const RANGE_OPTIONS = [
@@ -63,7 +19,6 @@ const RANGE_OPTIONS = [
 ];
 
 export default function CustomChartPage() {
-  useChartLibQuery(); // 加载图表库到 store
   const [contract, setContract] = useState("IF"); // 期现对比合约（IF/IH/IM）
   // 各表独立的时间范围：近7天 / 近30天 / 默认（60 个交易日，即当前维度）
   const [basisRange, setBasisRange] = useState("default");
@@ -75,11 +30,6 @@ export default function CustomChartPage() {
   const { data: basis } = useIfBasis(contract, basisDays);
   const { data: limitCounts } = useLimitCounts(limitDays); // 日线涨跌停家数
   const { data: breadthSeries } = useBreadthSeries(breadthDays); // 日线市场宽度
-
-  const charts = useChartLibStore((s) => s.charts);
-  const ifBasis = charts.find((c) => c.id === "if-basis");
-  const limitCount = charts.find((c) => c.id === "limit-count");
-  const breadthSeriesChart = charts.find((c) => c.id === "breadth-series");
 
   return (
     <>
@@ -112,7 +62,6 @@ export default function CustomChartPage() {
                   onChange={setContract}
                   ariaLabel="切换期货合约"
                 />
-                {ifBasis && <PinButton id={ifBasis.id} name={ifBasis.name} type={ifBasis.type} pinned={ifBasis.pinned} />}
               </>
             }
           />
@@ -152,7 +101,6 @@ export default function CustomChartPage() {
                   onChange={setBreadthRange}
                   ariaLabel="市场宽度时间范围"
                 />
-                {breadthSeriesChart && <PinButton id={breadthSeriesChart.id} name={breadthSeriesChart.name} type={breadthSeriesChart.type} pinned={breadthSeriesChart.pinned} />}
               </>
             }
           />
@@ -189,7 +137,6 @@ export default function CustomChartPage() {
                   onChange={setLimitRange}
                   ariaLabel="涨跌停时间范围"
                 />
-                {limitCount && <PinButton id={limitCount.id} name={limitCount.name} type={limitCount.type} pinned={limitCount.pinned} />}
               </>
             }
           />

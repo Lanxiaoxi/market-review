@@ -5,7 +5,7 @@ provider 注册表与映射表单测（不触网）
 import pytest
 
 # 注册 SQLModel 表（否则 create_all 建空库，init_db 迁移报错）
-from app.models import watchlist, chart_config, snapshot  # noqa: F401
+from app.models import watchlist, snapshot  # noqa: F401
 
 from app.services import provider
 from app.services.provider import (

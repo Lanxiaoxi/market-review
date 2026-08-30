@@ -77,14 +77,6 @@ export interface WatchlistSummary {
   position: number;    // 仓位 %
 }
 
-/** 图表库项 */
-export interface ChartLibItem {
-  id: string;
-  name: string;
-  type: string;
-  pinned: boolean;
-}
-
 /** 指数当日分时（腾讯兜底） */
 export interface IntradaySeries {
   times: string[];    // ["09:30", "09:31", ...]

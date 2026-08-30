@@ -1,10 +1,5 @@
 import apiClient from "./client";
-import type { ChartLibItem, IfBasisData, LimitCountsData, BreadthSeriesData } from "@/types/market";
-
-export async function fetchCharts(): Promise<ChartLibItem[]> {
-  const { data } = await apiClient.get<ChartLibItem[]>("/charts");
-  return data;
-}
+import type { IfBasisData, LimitCountsData, BreadthSeriesData } from "@/types/market";
 
 /** 股指期货期现对比（日线，近 days 个交易日；contract: IF/IH/IM） */
 export async function fetchFuturesBasis(contract: string, days = 60): Promise<IfBasisData> {
@@ -31,23 +26,4 @@ export async function fetchBreadthSeries(days = 60): Promise<BreadthSeriesData> 
     timeout: 30_000,
   });
   return data;
-}
-
-export async function addChart(
-  payload: Omit<ChartLibItem, "id"> & { id?: string }
-): Promise<ChartLibItem> {
-  const { data } = await apiClient.post<ChartLibItem>("/charts", payload);
-  return data;
-}
-
-export async function updateChart(
-  id: string,
-  patch: Partial<ChartLibItem>
-): Promise<ChartLibItem> {
-  const { data } = await apiClient.put<ChartLibItem>(`/charts/${id}`, patch);
-  return data;
-}
-
-export async function deleteChart(id: string): Promise<void> {
-  await apiClient.delete(`/charts/${id}`);
 }

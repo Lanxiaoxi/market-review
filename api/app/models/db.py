@@ -11,7 +11,7 @@ from app.config import get_settings, DATA_DIR
 
 # 注册表：所有 table=True 的模型必须先于 create_all 导入，否则表不会被创建。
 # db.py 是 metadata 的拥有者，集中注册可避免「迁移依赖路由被导入」这类隐式顺序耦合。
-from app.models import chart_config, market_data, snapshot, watchlist  # noqa: F401
+from app.models import market_data, snapshot, watchlist  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
