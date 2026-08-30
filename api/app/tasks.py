@@ -1,5 +1,5 @@
 """
-APScheduler 收盘定时任务（周一至周五 15:35，Asia/Shanghai）
+APScheduler 收盘定时任务（周一至周五 18:00，Asia/Shanghai）
 
 执行顺序：先回填 L2 持久层（补当日 + 补历史缺口），再落收盘快照。
 先回填后快照，快照才能直接读本地库而不额外回源。
@@ -57,14 +57,14 @@ def start_scheduler():
     scheduler.add_job(
         _run_snapshot,
         trigger="cron",
-        hour=15,
-        minute=35,
+        hour=18,
+        minute=0,
         day_of_week="mon-fri",
         id="daily_snapshot",
         replace_existing=True,
     )
     scheduler.start()
-    logger.info("[Scheduler] 收盘任务已启动（15:35 Asia/Shanghai，回填 + 快照）")
+    logger.info("[Scheduler] 收盘任务已启动（18:00 Asia/Shanghai，回填 + 快照）")
 
 
 def shutdown_scheduler():
