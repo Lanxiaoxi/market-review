@@ -11,12 +11,15 @@ interface IntradayChartProps {
   series: IntradaySeries[];
   timeLabels: string[];
   height?: number;
+  /** 自定义标签展示规则：返回 true 的索引才显示标签（默认按 09:30/10:30/13:00/14:00/15:00 锚点） */
+  labelAt?: (idx: number) => boolean;
 }
 
 export default function IntradayChart({
   series,
   timeLabels,
   height = 216,
+  labelAt,
 }: IntradayChartProps) {
   const option = useMemo(() => {
     // 时间轴刻度抽稀：数据点完整传入（242 点），仅标签按 09:30/10:30/13:00/14:00/15:00 展示；
@@ -26,6 +29,11 @@ export default function IntradayChart({
         .map((t) => timeLabels.indexOf(t))
         .filter((i) => i >= 0)
     );
+    const showLabel = labelAt
+      ? (idx: number) => labelAt(idx)
+      : anchors.size > 1
+        ? (idx: number) => anchors.has(idx)
+        : undefined;
     // 正负对称的 Y 轴：以全部数据的最大绝对值 +15% 余量定上下限，0% 基线恒在正中
     const maxAbs = Math.max(
       0,
@@ -41,7 +49,9 @@ export default function IntradayChart({
         boundaryGap: false,
         axisLabel: {
           fontSize: 11,
-          interval: anchors.size > 1 ? (idx: number) => anchors.has(idx) : "auto",
+          interval: showLabel ? (idx: number) => showLabel(idx) : "auto",
+          // "09:30" 截取前 5 位不变；多日拼接标签 "MM-DD HH:MM" 截取为 "MM-DD"
+          formatter: (v: string) => v.slice(0, 5),
         },
       },
       yAxis: {

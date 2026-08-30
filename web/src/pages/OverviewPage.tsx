@@ -158,14 +158,15 @@ export default function OverviewPage() {
     ? `${data.date} · ${data.weekday ?? WEEKDAYS[new Date(data.date).getDay()]}`
     : "加载中…";
 
-  // ─── 指数分时对比（T7.2，今日用真实分时，5日/20日用指数 sparkline） ───
+  // ─── 指数分时对比（今日用真实分时；近5日用最近 5 个交易日分时拼接；近20日用日 K 收盘价） ───
   const indices = data?.indices ?? [];
   const idxByCode = (code: string) => indices.find((x) => x.code === code);
 
-  // 每天拉取全部指数分时（8 只 A 股），显示集由 selectedIndices 决定，切换无需重新请求
+  // 拉取全部分时（今日 days=1，近5日 days=5），显示集由 selectedIndices 决定
   const { data: intraday } = useIntraday(
     INDEX_SERIES.map((d) => d.tencent),
-    period === "today" && !viewDate // 历史回放不拉实时分时（分时是当日数据）
+    period !== "20d" && !viewDate, // 历史回放不拉分时（分时是当日数据）
+    period === "5d" ? 5 : 1
   );
 
   // 今日：仅使用真实分时；无数据则为空数组（页面显示「暂无有效数据」）。
@@ -179,14 +180,36 @@ export default function OverviewPage() {
     };
   });
 
-  const series5d = visibleSeries.map((def) => ({
-    name: def.name,
-    // 用真实收盘价算涨跌幅（sparkline 是归一化坐标，直接算百分比会失真）
-    data: toPctChange(idxByCode(def.code)?.closes.slice(-5) ?? []),
-    color: def.color,
-  }));
+  // 近5日：最近 5 个交易日分时拼接（times 形如 "MM-DD HH:MM"），
+  // 每日以其首点重定基（0% 起）；本地缺失日价格为 0 → 保持 0 线，随 15:35 固化积累自动填满。
+  // 历史回放无分时 → 退化为近 5 日收盘价趋势。
+  const series5d = visibleSeries.map((def) => {
+    const intra = !viewDate ? intraday?.codes[def.tencent] : undefined;
+    if (intra && intra.prices.length > 0) {
+      const data: number[] = [];
+      let base = 0;
+      let prevDay = "";
+      intra.prices.forEach((p, i) => {
+        const day = intra.times[i]?.slice(0, 5) ?? "";
+        if (day !== prevDay) {
+          prevDay = day;
+          base = p > 0 ? p : 0;
+        }
+        data.push(base > 0 ? ((p - base) / base) * 100 : 0);
+      });
+      return { name: def.name, data, color: def.color };
+    }
+    // 历史回放 / 数据缺失 → 收盘价日线（近 5 日）
+    return {
+      name: def.name,
+      data: toPctChange(idxByCode(def.code)?.closes.slice(-5) ?? []),
+      color: def.color,
+    };
+  });
+
   const series20d = visibleSeries.map((def) => ({
     name: def.name,
+    // 用真实收盘价算涨跌幅（sparkline 是归一化坐标，直接算百分比会失真）
     data: toPctChange(idxByCode(def.code)?.closes ?? []),
     color: def.color,
   }));
@@ -200,12 +223,21 @@ export default function OverviewPage() {
   const labels20d = Array.from({ length: sparkLen }, (_, i) =>
     i === sparkLen - 1 ? "今日" : `T-${sparkLen - 1 - i}`
   );
+
+  // 近5日：拼接时间轴（"MM-DD HH:MM"），标签只显示每日边界（日期）
+  const fiveDayTimes = intraday?.codes["sh000001"]?.times ?? [];
+  const fiveDayLabelAt = (idx: number) =>
+    idx === 0 || fiveDayTimes[idx]?.slice(0, 5) !== fiveDayTimes[idx - 1]?.slice(0, 5);
+
   const timeLabels =
     period === "today"
       ? todayLabels
       : period === "5d"
-        ? ["T-4", "T-3", "T-2", "T-1", "今日"]
+        ? viewDate
+          ? ["T-4", "T-3", "T-2", "T-1", "今日"]
+          : fiveDayTimes
         : labels20d;
+  const labelAt = period === "5d" && !viewDate && fiveDayTimes.length > 0 ? fiveDayLabelAt : undefined;
 
   // 无有效数据：整页占位（保留标题栏）
   if (!data || indices.length === 0) {
@@ -349,7 +381,7 @@ export default function OverviewPage() {
               text={viewDate ? "历史日期无分时数据，请切换「近5日 / 近20日」" : "暂无有效数据"}
             />
           ) : (
-            <IntradayChart series={intradaySeries} timeLabels={timeLabels} height={216} />
+            <IntradayChart series={intradaySeries} timeLabels={timeLabels} height={216} labelAt={labelAt} />
           )}
         </BaseCard>
 

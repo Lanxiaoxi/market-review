@@ -648,6 +648,24 @@ async def read_intraday(session: AsyncSession, trade_date: date) -> dict | None:
     return payload
 
 
+async def read_intraday_day(session: AsyncSession, code: str, trade_date: date) -> dict | None:
+    """读取单日单指数分时（times HH:MM / prices / amounts）；无数据返回 None"""
+    rows = (
+        await session.execute(
+            select(IntradayBar)
+            .where(IntradayBar.trade_date == trade_date, IntradayBar.code == code)
+            .order_by(IntradayBar.time)
+        )
+    ).scalars().all()
+    if not rows:
+        return None
+    return {
+        "times": [r.time for r in rows],
+        "prices": [r.price for r in rows],
+        "amounts": [r.amount for r in rows],
+    }
+
+
 # ────────────────────────── series_cache 兜底 ──────────────────────────
 
 
