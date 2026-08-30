@@ -28,7 +28,10 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://fuyao.aicubes.cn"
 
-# 指数代码映射：与 tushare_provider.INDEX_CODES 对齐（港股指数由腾讯兜底）
+# 指数代码映射：除中证2000 外与 tushare_provider.INDEX_CODES 对齐（港股指数由腾讯兜底）。
+# 中证2000（932000）仅 tushare 收录；THS 快照接口不认 932000.CSI/.SH（1002 Unknown thscode，
+# 实测 000932.SH 为其他指数），保留会拖垮整批批量快照导致 THS 兜底时 indices 域整体 503，
+# 故从 THS 侧移除——主源 tushare 仍提供该指数，仅兜底场景缺失。
 INDEX_CODES = {
     "000001.SH": ("000001", "上证指数"),
     "000016.SH": ("000016", "上证50"),
@@ -37,7 +40,6 @@ INDEX_CODES = {
     "399006.SZ": ("399006", "创业板指"),
     "000688.SH": ("000688", "科创50"),
     "000852.SH": ("000852", "中证1000"),
-    "932000.CSI": ("932000", "中证2000"),
 }
 
 # 港股指数（腾讯兜底，THS 无）
