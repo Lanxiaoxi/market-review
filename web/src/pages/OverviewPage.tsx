@@ -13,6 +13,8 @@ import BarDistChart from "@/components/charts/BarDistChart";
 import TurnoverChart from "@/components/charts/TurnoverChart";
 import BreadthTable from "@/components/common/BreadthTable";
 import { TOKENS } from "@/components/charts/BaseChart";
+import { INDEX_SERIES } from "@/constants/indices";
+import { useUserPrefs } from "@/stores/userPrefs";
 import { useOverview } from "@/hooks/useOverview";
 import { usePolling } from "@/hooks/usePolling";
 import { useIntraday } from "@/hooks/useIntraday";
@@ -24,20 +26,6 @@ const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "�
 // 历史回放：本地库覆盖起点（首次 250 天回填后）与上海时区「今天」
 const HISTORY_START = "2025-08-19";
 const shanghaiToday = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
-
-/** 分时对比可选指数（7 只 A 股，均有腾讯分钟线；中证2000/港股无分钟线不提供） */
-const INDEX_SERIES = [
-  { name: "上证指数", code: "000001", tencent: "sh000001", color: TOKENS.ink },
-  { name: "上证50", code: "000016", tencent: "sh000016", color: TOKENS.accent },
-  { name: "沪深300", code: "000300", tencent: "sh000300", color: TOKENS.seriesPurple },
-  { name: "中证500", code: "000905", tencent: "sh000905", color: "#c97b2d" },
-  { name: "创业板指", code: "399006", tencent: "sz399006", color: "#1f9d8a" },
-  { name: "科创50", code: "000688", tencent: "sh000688", color: "#b048c8" },
-  { name: "中证1000", code: "000852", tencent: "sh000852", color: "#2f8fd6" },
-];
-
-/** 默认显示的指数（上证 + 创业板），可勾选增删 */
-const DEFAULT_SELECTED = ["000001", "399006"];
 
 /**
  * 归一化为「相对首个点的涨跌幅（%）」：三条指数线共享同一比例尺，可真实对比。
@@ -141,16 +129,18 @@ export default function OverviewPage() {
 
   // T7.2: 分段控件状态（只影响本卡）
   const [period, setPeriod] = useState("today");
-  // 分时对比显示的指数（默认上证 + 创业板；勾选 chips 增删，至少保留一个）
-  const [selectedIndices, setSelectedIndices] = useState<string[]>(DEFAULT_SELECTED);
+  // 分时对比显示的指数（默认取用户偏好；勾选 chips 增删，至少保留一个）
+  const selectedIndices = useUserPrefs((s) => s.selectedIndices);
+  const setSelectedIndices = useUserPrefs((s) => s.setSelectedIndices);
   const visibleSeries = INDEX_SERIES.filter((s) => selectedIndices.includes(s.code));
   const toggleIndex = (code: string) => {
-    setSelectedIndices((prev) => {
-      if (prev.includes(code)) {
-        return prev.length > 1 ? prev.filter((c) => c !== code) : prev;
-      }
-      return [...prev, code];
-    });
+    setSelectedIndices(
+      selectedIndices.includes(code)
+        ? selectedIndices.length > 1
+          ? selectedIndices.filter((c) => c !== code)
+          : selectedIndices
+        : [...selectedIndices, code]
+    );
   };
 
   // 日期显示：优先用后端 weekday（历史快照也正确），缺失时本地推算

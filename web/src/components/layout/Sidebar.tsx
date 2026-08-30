@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router";
+import { INDEX_SERIES } from "@/constants/indices";
+import { useUserPrefs } from "@/stores/userPrefs";
 import styles from "./Sidebar.module.css";
 
 interface NavItem {
@@ -72,9 +75,26 @@ const navItems: NavItem[] = [
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const nickname = useUserPrefs((s) => s.nickname);
+  const selectedIndices = useUserPrefs((s) => s.selectedIndices);
+  const setNickname = useUserPrefs((s) => s.setNickname);
+  const setSelectedIndices = useUserPrefs((s) => s.setSelectedIndices);
+
+  const [open, setOpen] = useState(false);
+  const [draftName, setDraftName] = useState(nickname);
 
   // 确定当前活跃的页面 id
   const activeId = navItems.find((item) => location.pathname === `/${item.id}` || (item.id === "overview" && location.pathname === "/"))?.id ?? "overview";
+
+  const toggleIndex = (code: string) => {
+    setSelectedIndices(
+      selectedIndices.includes(code)
+        ? selectedIndices.length > 1
+          ? selectedIndices.filter((c) => c !== code)
+          : selectedIndices
+        : [...selectedIndices, code]
+    );
+  };
 
   return (
     <aside className={styles.sidebar}>
@@ -103,15 +123,73 @@ export default function Sidebar() {
 
       <div className={styles.spacer} />
 
-      <div className={styles.user}>
+      {/* 偏好设置面板（点击用户区展开） */}
+      {open && (
+        <div className={styles.settings}>
+          <div className={styles.settingsTitle}>偏好设置</div>
+
+          <div className={styles.settingsLabel}>昵称</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input
+              className={styles.input}
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              aria-label="昵称"
+            />
+            <button
+              className={styles.saveBtn}
+              onClick={() => setNickname(draftName)}
+            >
+              保存
+            </button>
+          </div>
+
+          <div className={styles.settingsLabel}>默认分时指数</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+            {INDEX_SERIES.map((s) => {
+              const on = selectedIndices.includes(s.code);
+              return (
+                <button
+                  key={s.code}
+                  onClick={() => toggleIndex(s.code)}
+                  title={on ? `取消 ${s.name}` : `勾选 ${s.name}`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "3px 8px",
+                    borderRadius: 9999,
+                    border: on ? "1px solid var(--accent)" : "1px solid var(--border)",
+                    background: on ? "var(--active-bg)" : "var(--chip-bg)",
+                    fontSize: 11,
+                    color: on ? "var(--accent)" : "var(--muted)",
+                    fontFamily: "inherit",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <span style={{ width: 10, height: 3, borderRadius: 2, background: s.color }} />
+                  {s.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div
+        className={styles.user}
+        onClick={() => {
+          setOpen((v) => !v);
+          setDraftName(nickname);
+        }}
+        title="偏好设置"
+      >
         <span className={styles.avatar}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="5.5" r="3" fill="#ffffff" />
-            <rect x="3" y="9.5" width="10" height="5" rx="2.5" fill="#ffffff" />
-          </svg>
+          <span className={styles.avatarText}>{nickname.slice(0, 1)}</span>
         </span>
         <span className={styles.userStack}>
-          <span className={styles.userName}>李复盘</span>
+          <span className={styles.userName}>{nickname}</span>
           <span className={styles.userSub}>个人复盘空间</span>
         </span>
       </div>
