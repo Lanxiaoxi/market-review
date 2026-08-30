@@ -12,7 +12,13 @@
   width: 6px;
   height: 6px;
   border-radius: 9999px;
-  background: var(--down);
+  /* 默认中性灰：状态点不应默认为「跌」语义色 */
+  background: var(--series-base);
+}
+
+/* 持续状态（如「交易中」）用呼吸动效，收盘态恢复静态 */
+.live {
+  animation: mr-pulse 2s var(--ease-in-out) infinite;
 }
 
 .text {

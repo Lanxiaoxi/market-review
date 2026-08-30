@@ -92,9 +92,19 @@ export function baseChartOption(
       trigger: "axis",
       backgroundColor: "#fff",
       borderColor: t.gridStrong,
-      textStyle: { color: t.ink },
+      borderWidth: 1,
+      padding: [8, 12],
+      textStyle: { color: t.ink, fontSize: 12 },
+      // v2：tooltip 与卡片体系对齐（发丝边 + 12px 圆角）
+      extraCssText: "border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);",
     },
     color: SERIES_COLORS,
+    // v2 动效：入场 900ms ease-in-out，多系列错峰；数据更新 500ms 平滑过渡
+    animation: true,
+    animationDuration: 900,
+    animationEasing: "cubicInOut",
+    animationDurationUpdate: 500,
+    animationEasingUpdate: "cubicOut",
     ...overrides,
   } as EChartsOption;
 }
@@ -130,12 +140,21 @@ export default function BaseChart({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // 合并 base option + 外部 option
+  // 合并 base option + 外部 option，并为多系列补充错峰延迟
   const mergedOption = useMemo(() => {
-    return {
+    const merged = {
       ...baseChartOption(),
       ...option,
-    };
+    } as EChartsOption & { series?: unknown };
+
+    const series = merged.series;
+    if (Array.isArray(series)) {
+      merged.series = series.map((s, i) => ({
+        animationDelay: (idx: number) => idx * 8 + i * 150,
+        ...(s as object),
+      }));
+    }
+    return merged;
   }, [option]);
 
   return (

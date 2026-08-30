@@ -25,12 +25,35 @@
   --placeholder: #fafafc;
   --placeholder-icon: #a0a0a8;
 
+  /* 交互态描边（v2：hover 用描边加深表达层级，不加阴影） */
+  --border-hover: #d8d8dd;
+  --nav-hover-bg: #f2f4f8;
+
   /* 圆角 5 项 */
   --r-card: 12px;
   --r-nav: 10px;
   --r-seg: 8px;
   --r-seg-inner: 6px;
   --r-pill: 9999px;
+
+  /* v2 布局令牌 */
+  --content-max: 1440px;
+  --pad-content: 32px;
+  --gap-section: 28px;
+  --pad-card-y: 20px;
+  --pad-card-x: 22px;
+
+  /* v2 动效令牌 */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 400ms;
+  --dur-count: 800ms;
+  --dur-draw: 900ms;
+  --dur-shimmer: 1200ms;
+  --stagger-step: 60ms;
 
   /* 字体栈 */
   --font-sans: "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",

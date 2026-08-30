@@ -1,0 +1,67 @@
+/* 骨架屏：设计约束禁止 spinner，加载态统一走 shimmer 占位块 */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+}
+
+.block {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.grid {
+  display: flex;
+  gap: 12px;
+}
+
+.card {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 104px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* shimmer 渐变：属于加载状态反馈，非装饰性背景 */
+.shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--chip-bg) 25%,
+    #e9eaee 37%,
+    var(--chip-bg) 63%
+  );
+  background-size: 400% 100%;
+  animation: mr-shimmer var(--dur-shimmer) linear infinite;
+}
+
+.line {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.title {
+  width: 140px;
+  height: 20px;
+  border-radius: 6px;
+}
+
+.body {
+  height: 216px;
+  border-radius: 8px;
+}

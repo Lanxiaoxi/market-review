@@ -33,6 +33,7 @@
 }
 
 .navItem {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -43,11 +44,18 @@
   background: transparent;
   text-align: left;
   font-family: inherit;
-  transition: background-color 0.15s ease;
+  /* v2：背景与图标色同步过渡，按压有微反馈 */
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
 .navItem:hover {
-  background: #f2f4f8;
+  background: var(--nav-hover-bg);
+}
+
+.navItem:active {
+  transform: scale(0.98);
 }
 
 .navItemActive {
@@ -56,6 +64,17 @@
 
 .navItemActive .navTitle {
   color: var(--accent);
+}
+
+/* 选中项左侧语义条：与指数卡改造保持同一语言 */
+.navItemActive::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 3px;
+  height: 18px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
 }
 
 .navIcon {

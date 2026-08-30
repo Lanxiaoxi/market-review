@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import PageHeader from "@/components/layout/PageHeader";
+import CardHeader from "@/components/layout/CardHeader";
 import IndexCard from "@/components/common/IndexCard";
 import BaseCard from "@/components/common/BaseCard";
 import Chip from "@/components/common/Chip";
@@ -96,19 +97,19 @@ export default function HistoryPage() {
 
           {/* 指数卡网格 */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-            {data.indices.map((idx) => (
-              <IndexCard key={idx.code} data={idx} />
+            {data.indices.map((idx, i) => (
+              <IndexCard key={idx.code} data={idx} index={i} />
             ))}
           </div>
 
           {/* 市场宽度 + 涨停 TOP */}
-          <div style={{ display: "flex", gap: 16, alignItems: "stretch" }}>
-            <BaseCard style={{ flex: "0 0 400px", padding: "18px 20px" }}>
+          <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <BaseCard style={{ flex: "1 1 400px", minWidth: 0 }}>
               <BreadthTable breadth={data.breadth} />
             </BaseCard>
 
-            <BaseCard style={{ flex: "1 1 auto", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>涨停 TOP</span>
+            <BaseCard style={{ flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+              <CardHeader title="涨停 TOP" />
               {(data.breadth.limitUpTop ?? []).map((s) => (
                 <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 12, color: "var(--ink)", width: 64 }}>{s.name}</span>
@@ -119,11 +120,8 @@ export default function HistoryPage() {
           </div>
 
           {/* 行业 TOP5 */}
-          <BaseCard style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>行业板块表现</span>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>申万一级行业 · 领涨/领跌 TOP5 · 单位 %</span>
-            </div>
+          <BaseCard style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <CardHeader title="行业板块表现" hint="申万一级行业 · 领涨/领跌 TOP5 · 单位 %" />
             <div style={{ display: "flex", gap: 32 }}>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: "var(--up)" }}>领涨 TOP5</span>

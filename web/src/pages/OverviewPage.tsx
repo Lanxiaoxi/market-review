@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import PageHeader from "@/components/layout/PageHeader";
+import CardHeader from "@/components/layout/CardHeader";
 import IndexCard from "@/components/common/IndexCard";
 import BaseCard from "@/components/common/BaseCard";
 import Segmented from "@/components/common/Segmented";
@@ -12,7 +13,6 @@ import BreadthTable from "@/components/common/BreadthTable";
 import { TOKENS } from "@/components/charts/BaseChart";
 import { useOverview } from "@/hooks/useOverview";
 import { useChartLibQuery } from "@/hooks/useChartLib";
-import { useChartLibStore } from "@/stores/chartLib";
 import { usePolling } from "@/hooks/usePolling";
 import { useIntraday } from "@/hooks/useIntraday";
 
@@ -59,13 +59,13 @@ function MiniChart({ type }: { type: string }) {
   if (type === "barDist") {
     return (
       <svg width="150" height="48" viewBox="0 0 150 48" fill="none" style={{ display: "block" }}>
-        <rect x="2" y="40" width="14" height="4" fill="var(--up)" />
-        <rect x="20" y="33" width="14" height="11" fill="var(--up)" />
-        <rect x="38" y="12" width="14" height="32" fill="var(--up)" />
-        <rect x="56" y="39" width="14" height="5" fill="var(--series-base)" />
-        <rect x="74" y="25" width="14" height="19" fill="var(--down)" />
-        <rect x="92" y="38" width="14" height="6" fill="var(--down)" />
-        <rect x="110" y="42" width="14" height="2" fill="var(--down)" />
+        <rect x="2" y="40" width="14" height="4" rx="1" fill="var(--up)" />
+        <rect x="20" y="33" width="14" height="11" rx="1" fill="var(--up)" />
+        <rect x="38" y="12" width="14" height="32" rx="1" fill="var(--up)" />
+        <rect x="56" y="39" width="14" height="5" rx="1" fill="var(--series-base)" />
+        <rect x="74" y="25" width="14" height="19" rx="1" fill="var(--down)" />
+        <rect x="92" y="38" width="14" height="6" rx="1" fill="var(--down)" />
+        <rect x="110" y="42" width="14" height="2" rx="1" fill="var(--down)" />
       </svg>
     );
   }
@@ -73,16 +73,16 @@ function MiniChart({ type }: { type: string }) {
   if (type === "turnoverIntraday") {
     return (
       <svg width="150" height="48" viewBox="0 0 150 48" fill="none" style={{ display: "block" }}>
-        <rect x="4" y="30" width="10" height="14" fill="var(--bar-fill)" />
-        <rect x="18" y="34" width="10" height="10" fill="var(--bar-fill)" />
-        <rect x="32" y="38" width="10" height="6" fill="var(--bar-fill)" />
-        <rect x="46" y="40" width="10" height="4" fill="var(--bar-fill)" />
-        <rect x="60" y="36" width="10" height="8" fill="var(--bar-fill)" />
-        <rect x="74" y="32" width="10" height="12" fill="var(--bar-fill)" />
-        <rect x="88" y="26" width="10" height="18" fill="var(--bar-fill)" />
-        <rect x="102" y="22" width="10" height="22" fill="var(--bar-fill)" />
-        <rect x="116" y="14" width="10" height="30" fill="var(--bar-fill)" />
-        <rect x="130" y="8" width="10" height="36" fill="var(--bar-fill)" />
+        <rect x="4" y="30" width="10" height="14" rx="1" fill="var(--bar-fill)" />
+        <rect x="18" y="34" width="10" height="10" rx="1" fill="var(--bar-fill)" />
+        <rect x="32" y="38" width="10" height="6" rx="1" fill="var(--bar-fill)" />
+        <rect x="46" y="40" width="10" height="4" rx="1" fill="var(--bar-fill)" />
+        <rect x="60" y="36" width="10" height="8" rx="1" fill="var(--bar-fill)" />
+        <rect x="74" y="32" width="10" height="12" rx="1" fill="var(--bar-fill)" />
+        <rect x="88" y="26" width="10" height="18" rx="1" fill="var(--bar-fill)" />
+        <rect x="102" y="22" width="10" height="22" rx="1" fill="var(--bar-fill)" />
+        <rect x="116" y="14" width="10" height="30" rx="1" fill="var(--bar-fill)" />
+        <rect x="130" y="8" width="10" height="36" rx="1" fill="var(--bar-fill)" />
         <polyline points="9,40 23,36 37,34 51,33 65,29 79,27 93,23 107,19 121,13 135,6" stroke="var(--accent)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
@@ -111,18 +111,85 @@ function MiniChart({ type }: { type: string }) {
   }
   return (
     <svg width="150" height="48" viewBox="0 0 150 48" fill="none" style={{ display: "block" }}>
-      <rect x="4" y="30" width="10" height="14" fill="var(--bar-fill)" />
-      <rect x="18" y="34" width="10" height="10" fill="var(--bar-fill)" />
-      <rect x="32" y="38" width="10" height="6" fill="var(--bar-fill)" />
-      <rect x="46" y="40" width="10" height="4" fill="var(--bar-fill)" />
-      <rect x="60" y="36" width="10" height="8" fill="var(--bar-fill)" />
-      <rect x="74" y="32" width="10" height="12" fill="var(--bar-fill)" />
-      <rect x="88" y="26" width="10" height="18" fill="var(--bar-fill)" />
-      <rect x="102" y="22" width="10" height="22" fill="var(--bar-fill)" />
-      <rect x="116" y="14" width="10" height="30" fill="var(--bar-fill)" />
-      <rect x="130" y="8" width="10" height="36" fill="var(--bar-fill)" />
+      <rect x="4" y="30" width="10" height="14" rx="1" fill="var(--bar-fill)" />
+      <rect x="18" y="34" width="10" height="10" rx="1" fill="var(--bar-fill)" />
+      <rect x="32" y="38" width="10" height="6" rx="1" fill="var(--bar-fill)" />
+      <rect x="46" y="40" width="10" height="4" rx="1" fill="var(--bar-fill)" />
+      <rect x="60" y="36" width="10" height="8" rx="1" fill="var(--bar-fill)" />
+      <rect x="74" y="32" width="10" height="12" rx="1" fill="var(--bar-fill)" />
+      <rect x="88" y="26" width="10" height="18" rx="1" fill="var(--bar-fill)" />
+      <rect x="102" y="22" width="10" height="22" rx="1" fill="var(--bar-fill)" />
+      <rect x="116" y="14" width="10" height="30" rx="1" fill="var(--bar-fill)" />
+      <rect x="130" y="8" width="10" height="36" rx="1" fill="var(--bar-fill)" />
       <polyline points="9,40 23,36 37,34 51,33 65,29 79,27 93,23 107,19 121,13 135,6" stroke="var(--accent)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+/** 板块排行榜：轨道 flex 自适应，填充按真实百分比（修复 v1 把百分比当 px 的缺陷） */
+function SectorRank({
+  title,
+  items,
+  color,
+  sign,
+}: {
+  title: string;
+  items: { name: string; pct: number }[];
+  color: string;
+  sign: string;
+}) {
+  const maxAbs = Math.max(...items.map((x) => Math.abs(x.pct)), 1);
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
+      <span style={{ fontSize: 13, fontWeight: 600, color }}>{title}</span>
+      {items.map((s, i) => (
+        <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span
+            style={{
+              flex: "0 0 72px",
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--ink)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {s.name}
+          </span>
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              height: 8,
+              borderRadius: 4,
+              background: "var(--grid)",
+              overflow: "hidden",
+            }}
+          >
+            <span
+              className="mr-grow"
+              style={{
+                display: "block",
+                height: 8,
+                width: `${Math.max((Math.abs(s.pct) / maxAbs) * 100, 3)}%`,
+                borderRadius: 4,
+                background: color,
+                animationDelay: `${i * 80}ms`,
+              }}
+            />
+          </span>
+          <span
+            className="num"
+            style={{ flex: "0 0 52px", fontSize: 13, fontWeight: 500, color, textAlign: "right" }}
+          >
+            {sign}
+            {Math.abs(s.pct).toFixed(2)}%
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -183,8 +250,7 @@ export default function OverviewPage() {
   // 时间轴标签必须与数据点一一对应（ECharts category 轴按索引对齐，长度不等会丢点）
   const todayTimes = intraday?.codes["sh000001"]?.times;
   const todayLen = intraday?.codes["sh000001"]?.prices.length ?? 12;
-  const todayLabels =
-    todayTimes && todayTimes.length > 0 ? todayTimes : sessionLabels(todayLen);
+  const todayLabels = todayTimes && todayTimes.length > 0 ? todayTimes : sessionLabels(todayLen);
   const sparkLen = idxByCode("000001")?.sparkline?.length ?? 12;
   const labels20d = Array.from({ length: sparkLen }, (_, i) =>
     i === sparkLen - 1 ? "今日" : `T-${sparkLen - 1 - i}`
@@ -217,6 +283,7 @@ export default function OverviewPage() {
         <Chip
           text={data?.closed ? "已收盘" : "交易中"}
           dotColor={data?.closed ? "var(--series-base)" : "var(--accent)"}
+          live={!data?.closed}
         />
         <PillButton
           onClick={() => navigate("/history")}
@@ -239,35 +306,48 @@ export default function OverviewPage() {
       {isError && (
         <div
           title="接口暂不可用，正在展示缓存数据"
+          className="mr-fade"
           style={{ fontSize: 12, color: "var(--muted)", padding: "6px 12px", background: "var(--chip-bg)", borderRadius: "var(--r-pill)", alignSelf: "flex-start" }}
         >
           ⚠ 数据接口暂不可用，已切换为缓存数据
         </div>
       )}
 
-      {/* 8 张指数卡网格 */}
+      {/* 8 张指数卡网格（v2：语义色条 + 面积图 + 入场错峰；窄屏自动换行） */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-        {indices.map((idx) => (
-          <IndexCard key={idx.code} data={idx} />
+        {indices.map((idx, i) => (
+          <IndexCard key={idx.code} data={idx} index={i} />
         ))}
       </div>
 
       {/* 指数分时对比 + 市场宽度（自适应：宽屏并排，窄屏按比例收缩，极窄自动换行） */}
-      <div style={{ display: "flex", gap: 16, alignItems: "stretch", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
         {/* 指数分时对比 */}
-        <BaseCard style={{ flex: "1 1 968px", minWidth: 0, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>指数分时对比</span>
-            <Segmented
-              options={[{ label: "今日", value: "today" }, { label: "近5日", value: "5d" }, { label: "近20日", value: "20d" }]}
-              value={period}
-              onChange={setPeriod}
-            />
-          </div>
+        <BaseCard
+          className="mr-enter"
+          style={{ flex: "1 1 968px", minWidth: 0, display: "flex", flexDirection: "column", gap: 14, animationDelay: "80ms" }}
+        >
+          <CardHeader
+            title="指数分时对比"
+            actions={
+              <Segmented
+                options={[{ label: "今日", value: "today" }, { label: "近5日", value: "5d" }, { label: "近20日", value: "20d" }]}
+                value={period}
+                onChange={setPeriod}
+              />
+            }
+          />
+          {/* v2 图例：色线 + 文字，辨识度高于纯文字 */}
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--ink)" }}>上证指数</span>
-            <span style={{ fontSize: 12, color: "var(--accent)" }}>沪深300</span>
-            <span style={{ fontSize: 12, color: "var(--series-purple)" }}>创业板指</span>
+            {INDEX_SERIES.map((s) => (
+              <span
+                key={s.code}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted)" }}
+              >
+                <span style={{ width: 12, height: 3, borderRadius: 2, background: s.color }} />
+                {s.name}
+              </span>
+            ))}
           </div>
           {period === "today" && !todaySeries.some((s) => s.data.length > 0) ? (
             <PlaceholderCard text="暂无有效数据" />
@@ -277,59 +357,36 @@ export default function OverviewPage() {
         </BaseCard>
 
         {/* 市场宽度：四列表格（状态｜分布｜占比｜家数）+ 50% 参考刻度 + 成交额/涨跌停指标块 */}
-        <BaseCard style={{ flex: "1 1 400px", minWidth: 0, padding: "18px 20px" }}>
+        <BaseCard
+          className="mr-enter"
+          style={{ flex: "1 1 400px", minWidth: 0, animationDelay: "140ms" }}
+        >
           <BreadthTable breadth={data?.breadth} showTurnover />
         </BaseCard>
       </div>
 
       {/* 行业板块表现 */}
-      <BaseCard style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>行业板块表现</span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>申万一级行业 · 领涨/领跌 TOP5 · 单位 %</span>
-        </div>
+      <BaseCard
+        className="mr-enter"
+        style={{ display: "flex", flexDirection: "column", gap: 16, animationDelay: "200ms" }}
+      >
+        <CardHeader title="行业板块表现" hint="申万一级行业 · 领涨/领跌 TOP5 · 单位 %" />
         {(data?.sectorsUp?.length ?? 0) === 0 && (data?.sectorsDown?.length ?? 0) === 0 ? (
           <PlaceholderCard text="暂无有效数据" />
         ) : (
-          <div style={{ display: "flex", gap: 32 }}>
-            {/* 领涨 */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--up)" }}>领涨 TOP5</span>
-              {(data?.sectorsUp ?? []).map((s) => {
-                const maxW = Math.max(...(data?.sectorsUp ?? []).map((x) => Math.abs(x.pct)), 1);
-                return (
-                  <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ width: 68, fontSize: 12, color: "var(--ink)", flex: "0 0 auto" }}>{s.name}</span>
-                    <span style={{ height: 8, borderRadius: 4, background: "var(--up)", width: Math.max(8, s.pct / maxW * 100) }} />
-                    <span className="num" style={{ fontSize: 12, fontWeight: 500, color: "var(--up)" }}>+{s.pct.toFixed(2)}%</span>
-                  </div>
-                );
-              })}
-            </div>
-            {/* 领跌 */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--down)" }}>领跌 TOP5</span>
-              {(data?.sectorsDown ?? []).map((s) => {
-                const maxW = Math.max(...(data?.sectorsDown ?? []).map((x) => Math.abs(x.pct)), 1);
-                return (
-                  <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ width: 68, fontSize: 12, color: "var(--ink)", flex: "0 0 auto" }}>{s.name}</span>
-                    <span style={{ height: 8, borderRadius: 4, background: "var(--down)", width: Math.max(8, Math.abs(s.pct) / maxW * 100) }} />
-                    <span className="num" style={{ fontSize: 12, fontWeight: 500, color: "var(--down)" }}>{s.pct.toFixed(2)}%</span>
-                  </div>
-                );
-              })}
-            </div>
+          <div style={{ display: "flex", gap: 40 }}>
+            <SectorRank title="领涨 TOP5" items={data?.sectorsUp ?? []} color="var(--up)" sign="+" />
+            <SectorRank title="领跌 TOP5" items={data?.sectorsDown ?? []} color="var(--down)" sign="-" />
           </div>
         )}
       </BaseCard>
 
       {/* 我的图表（T7.6 钉选闭环） */}
-      <BaseCard style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>我的图表</span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>从自定义图表页选择 · 钉选展示</span>
-        </div>
+      <BaseCard
+        className="mr-enter"
+        style={{ display: "flex", flexDirection: "column", gap: 14, animationDelay: "260ms" }}
+      >
+        <CardHeader title="我的图表" hint="从自定义图表页选择 · 钉选展示" />
         <div style={{ display: "flex", gap: 12 }}>
           {/* 已钉选槽 */}
           {pinnedCharts.map((c) => (
@@ -345,15 +402,17 @@ export default function OverviewPage() {
           {/* 空槽 */}
           {pinnedCharts.length < 2 && (
             <div style={{ flex: 1 }}>
-              <PlaceholderCard />
+              <PlaceholderCard actionable />
             </div>
           )}
         </div>
       </BaseCard>
 
-      {/* 页脚 */}
-      <div style={{ paddingTop: 4 }}>
-        <span style={{ fontSize: 12, color: "var(--muted)" }}>数据来源：Tushare / 腾讯行情，仅供参考 · 行情按 A 股惯例红涨绿跌</span>
+      {/* 页脚：v2 增加发丝分隔线，消除「悬空」感 */}
+      <div style={{ paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>
+          数据来源：Tushare / 腾讯行情，仅供参考 · 行情按 A 股惯例红涨绿跌
+        </span>
       </div>
     </>
   );

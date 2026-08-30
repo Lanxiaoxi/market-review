@@ -3,4 +3,24 @@
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--r-card);
+  /* v2：内边距收敛到组件内，调用处不再重复声明 */
+  padding: var(--pad-card-y) var(--pad-card-x);
+}
+
+/* 可交互卡片（hover 位移 + 描边加深，不加阴影） */
+.interactive {
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+  will-change: transform;
+}
+
+.interactive:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hover);
+}
+
+/* 无内边距变体（内嵌表格等需要自行控制留白的场景） */
+.plain {
+  padding: 0;
 }

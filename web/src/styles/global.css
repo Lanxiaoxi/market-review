@@ -23,3 +23,59 @@ body {
 button {
   font-family: inherit;
 }
+
+/* ===== v2 动效基座 ===== */
+/* 设计约束 §6：处理态不用 spinner；动效仅用于入场反馈与持续传输，
+   此处补齐的动画均为「入场 / 数据到达」语义，加载中统一走骨架屏。 */
+
+@keyframes mr-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes mr-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 条形 / 进度：transform-origin 由使用方设为 left */
+@keyframes mr-grow-x {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* 骨架屏 shimmer */
+@keyframes mr-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* 状态点呼吸（仅用于「交易中」这类持续性状态） */
+@keyframes mr-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.82); }
+}
+
+.mr-enter {
+  animation: mr-fade-up var(--dur-slow) var(--ease-out) both;
+}
+
+.mr-fade {
+  animation: mr-fade-in var(--dur-slow) var(--ease-out) both;
+}
+
+.mr-grow {
+  transform-origin: left center;
+  animation: mr-grow-x 500ms var(--ease-out) both;
+}
+
+/* 尊重系统「减少动态效果」偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

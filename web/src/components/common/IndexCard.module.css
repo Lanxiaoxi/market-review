@@ -1,39 +1,77 @@
-/* 指数卡：162px 宽 */
+/* 指数卡 v2：白底发丝边 + 左侧 3px 语义色条 + 走势面积图 */
+
 .card {
-  width: 162px;
+  position: relative;
+  /* 基准宽 150px：宽屏均分，窄于基准自动换行，避免被压扁 */
+  flex: 1 1 150px;
+  min-width: 150px;
+  display: flex;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--r-card);
-  padding: 12px 14px;
+  overflow: hidden;
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+  will-change: transform;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hover);
+}
+
+/* 左侧语义色条：替代 v1 的整圈彩色描边，降低视觉噪音 */
+.bar {
+  flex: 0 0 3px;
+  width: 3px;
+  align-self: stretch;
+}
+
+.barUp {
+  background: var(--up);
+}
+
+.barDown {
+  background: var(--down);
+}
+
+.barFlat {
+  background: var(--series-base);
+}
+
+.body {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  transition: border-color 0.15s ease;
-}
-
-/* 涨跌色边框高亮（红涨绿跌，平盘保持中性发丝边） */
-.cardUp {
-  border-color: var(--up);
-}
-
-.cardDown {
-  border-color: var(--down);
+  gap: 4px;
+  padding: 14px 13px 12px;
 }
 
 .name {
   font-size: 13px;
+  font-weight: 400;
   color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .value {
-  font-size: 19px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--ink);
+  letter-spacing: -0.3px;
+  line-height: 28px;
+  white-space: nowrap;
 }
 
 .change {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
 }
 
 .up {
@@ -50,6 +88,8 @@
 }
 
 .sparkline {
+  display: block;
   width: 100%;
-  height: 28px;
+  height: 30px;
+  margin-top: 2px;
 }

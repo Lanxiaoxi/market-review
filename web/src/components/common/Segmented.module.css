@@ -1,5 +1,6 @@
 /* 分段控件容器 */
 .segmented {
+  position: relative;
   display: inline-flex;
   gap: 2px;
   padding: 3px;
@@ -7,8 +8,30 @@
   background: var(--chip-bg);
 }
 
+/* 滑动指示块：绝对定位的白底胶囊，切换时位移 + 变宽 */
+.indicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: var(--r-seg-inner);
+  background: #fff;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    transform var(--dur-base) var(--ease-spring),
+    width var(--dur-base) var(--ease-spring),
+    opacity var(--dur-base) var(--ease-out);
+}
+
+.indicatorReady {
+  opacity: 1;
+}
+
 /* 段 */
 .seg {
+  position: relative;
+  z-index: 1;
   padding: 5px 10px;
   border-radius: var(--r-seg-inner);
   font-size: 12px;
@@ -18,11 +41,15 @@
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
+  transition: color var(--dur-base) var(--ease-out);
 }
 
-/* 选中段：白底 + 深色文字 600 */
+.seg:hover:not(.segActive) {
+  color: var(--muted-strong);
+}
+
+/* 选中段：由指示块提供白底，文字 600（设计约束 §4.4） */
 .segActive {
-  background: #fff;
   color: var(--ink);
-  font-weight: 500;
+  font-weight: 600;
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import PageHeader from "@/components/layout/PageHeader";
+import CardHeader from "@/components/layout/CardHeader";
 import BaseCard from "@/components/common/BaseCard";
 import PlaceholderCard from "@/components/common/PlaceholderCard";
 import Segmented from "@/components/common/Segmented";
@@ -99,11 +100,14 @@ export default function CustomChartPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         {/* 涨跌家数分布 */}
-        <BaseCard style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>涨跌家数分布</span>
-            {barDist && <PinButton id={barDist.id} name={barDist.name} type={barDist.type} pinned={barDist.pinned} />}
-          </div>
+        <BaseCard
+          className="mr-enter"
+          style={{ display: "flex", flexDirection: "column", gap: 14, animationDelay: "0ms" }}
+        >
+          <CardHeader
+            title="涨跌家数分布"
+            actions={barDist && <PinButton id={barDist.id} name={barDist.name} type={barDist.type} pinned={barDist.pinned} />}
+          />
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <span style={{ fontSize: 12, color: "var(--up)" }}>上涨区间</span>
             <span style={{ fontSize: 12, color: "var(--muted)" }}>平盘</span>
@@ -117,11 +121,14 @@ export default function CustomChartPage() {
         </BaseCard>
 
         {/* 成交额分时 */}
-        <BaseCard style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>成交额分时</span>
-            {turnover && <PinButton id={turnover.id} name={turnover.name} type={turnover.type} pinned={turnover.pinned} />}
-          </div>
+        <BaseCard
+          className="mr-enter"
+          style={{ display: "flex", flexDirection: "column", gap: 14, animationDelay: "60ms" }}
+        >
+          <CardHeader
+            title="成交额分时"
+            actions={turnover && <PinButton id={turnover.id} name={turnover.name} type={turnover.type} pinned={turnover.pinned} />}
+          />
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <span style={{ fontSize: 12, color: "var(--muted)" }}>区间成交额</span>
             <span style={{ fontSize: 12, color: "var(--accent)" }}>累计成交额</span>
@@ -134,23 +141,29 @@ export default function CustomChartPage() {
         </BaseCard>
 
         {/* 股指期货期现对比（通栏，分段切换合约） */}
-        <BaseCard style={{ gridColumn: "1 / -1", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>股指期货期现对比</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>现货 vs 中金所主力合约 · 日线</span>
-              <Segmented
-                options={[
-                  { label: "沪深300", value: "IF" },
-                  { label: "上证50", value: "IH" },
-                  { label: "中证1000", value: "IM" },
-                ]}
-                value={contract}
-                onChange={setContract}
-              />
-              {ifBasis && <PinButton id={ifBasis.id} name={ifBasis.name} type={ifBasis.type} pinned={ifBasis.pinned} />}
-            </div>
-          </div>
+        <BaseCard
+          className="mr-enter"
+          style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 14, animationDelay: "120ms" }}
+        >
+          <CardHeader
+            title="股指期货期现对比"
+            actions={
+              <>
+                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>现货 vs 中金所主力合约 · 日线</span>
+                <Segmented
+                  options={[
+                    { label: "沪深300", value: "IF" },
+                    { label: "上证50", value: "IH" },
+                    { label: "中证1000", value: "IM" },
+                  ]}
+                  value={contract}
+                  onChange={setContract}
+                  ariaLabel="切换期货合约"
+                />
+                {ifBasis && <PinButton id={ifBasis.id} name={ifBasis.name} type={ifBasis.type} pinned={ifBasis.pinned} />}
+              </>
+            }
+          />
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <span style={{ fontSize: 12, color: "var(--ink)" }}>{basis?.name ?? "现货指数"}</span>
             <span style={{ fontSize: 12, color: "var(--accent)" }}>{basis?.contract ?? ""}主力合约</span>
@@ -172,14 +185,19 @@ export default function CustomChartPage() {
         </BaseCard>
 
         {/* 日线涨停/跌停家数（通栏） */}
-        <BaseCard style={{ gridColumn: "1 / -1", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>涨跌停家数</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>每日涨停/跌停 · 日线</span>
-              {limitCount && <PinButton id={limitCount.id} name={limitCount.name} type={limitCount.type} pinned={limitCount.pinned} />}
-            </div>
-          </div>
+        <BaseCard
+          className="mr-enter"
+          style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 14, animationDelay: "180ms" }}
+        >
+          <CardHeader
+            title="涨跌停家数"
+            actions={
+              <>
+                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>每日涨停/跌停 · 日线</span>
+                {limitCount && <PinButton id={limitCount.id} name={limitCount.name} type={limitCount.type} pinned={limitCount.pinned} />}
+              </>
+            }
+          />
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <span style={{ fontSize: 12, color: "var(--up)" }}>涨停</span>
             <span style={{ fontSize: 12, color: "var(--down)" }}>跌停</span>
@@ -198,7 +216,7 @@ export default function CustomChartPage() {
       </div>
 
       {/* 从图表库添加图表 */}
-      <PlaceholderCard text="从图表库添加图表" />
+      <PlaceholderCard text="从图表库添加图表" actionable />
     </>
   );
 }

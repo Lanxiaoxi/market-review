@@ -1,8 +1,10 @@
 import { useState } from "react";
 import PageHeader from "@/components/layout/PageHeader";
+import CardHeader from "@/components/layout/CardHeader";
 import BaseCard from "@/components/common/BaseCard";
 import DataTable, { RowSparkline } from "@/components/common/DataTable";
 import PillButton from "@/components/common/PillButton";
+import { useCountUp } from "@/hooks/useCountUp";
 import {
   useWatchlistQuery,
   useAddWatchlistItem,
@@ -10,6 +12,38 @@ import {
   useUpdateWatchlistItem,
 } from "@/hooks/useWatchlist";
 import type { WatchlistItem } from "@/types/market";
+
+/** 汇总指标块：30px 数值 + 数字滚动 */
+function Metric({
+  value,
+  label,
+  format,
+  color,
+}: {
+  value: number;
+  label: string;
+  format: (v: number) => string;
+  color?: string;
+}) {
+  const animated = useCountUp(value);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <span
+        className="num"
+        style={{
+          fontSize: 30,
+          fontWeight: 600,
+          letterSpacing: -0.5,
+          lineHeight: "38px",
+          color: color ?? "var(--ink)",
+        }}
+      >
+        {format(animated)}
+      </span>
+      <span style={{ fontSize: 12, color: "var(--muted)" }}>{label}</span>
+    </div>
+  );
+}
 
 const inputStyle: React.CSSProperties = {
   padding: "6px 10px",
@@ -165,32 +199,33 @@ export default function WatchlistPage() {
         </BaseCard>
       )}
 
-      {/* 汇总卡 */}
-      <BaseCard style={{ padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span className="num" style={{ fontSize: 24, fontWeight: 600, color: "var(--ink)" }}>{summary?.totalValue.toFixed(1)}万</span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>总市值</span>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span className="num" style={{ fontSize: 24, fontWeight: 600, color: (summary?.todayPnl ?? 0) >= 0 ? "var(--up)" : "var(--down)" }}>{fmtWan(summary?.todayPnl ?? 0)}</span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>今日盈亏</span>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span className="num" style={{ fontSize: 24, fontWeight: 600, color: (summary?.holdingPnl ?? 0) >= 0 ? "var(--up)" : "var(--down)" }}>{fmtWan(summary?.holdingPnl ?? 0)}</span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>持仓盈亏</span>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span className="num" style={{ fontSize: 24, fontWeight: 600, color: "var(--ink)" }}>{summary?.position.toFixed(0)}%</span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>仓位</span>
-        </div>
+      {/* 汇总卡（v2：指标值 30px + 数字滚动 + 入场动效） */}
+      <BaseCard
+        className="mr-enter"
+        style={{ padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}
+      >
+        <Metric value={summary?.totalValue ?? 0} label="总市值" format={(v) => `${v.toFixed(1)}万`} />
+        <Metric
+          value={summary?.todayPnl ?? 0}
+          label="今日盈亏"
+          format={fmtWan}
+          color={(summary?.todayPnl ?? 0) >= 0 ? "var(--up)" : "var(--down)"}
+        />
+        <Metric
+          value={summary?.holdingPnl ?? 0}
+          label="持仓盈亏"
+          format={fmtWan}
+          color={(summary?.holdingPnl ?? 0) >= 0 ? "var(--up)" : "var(--down)"}
+        />
+        <Metric value={summary?.position ?? 0} label="仓位" format={(v) => `${v.toFixed(0)}%`} />
       </BaseCard>
 
       {/* 自选池 */}
-      <BaseCard style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>自选池</span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>当日分时 · 盈亏贡献</span>
-        </div>
+      <BaseCard
+        className="mr-enter"
+        style={{ display: "flex", flexDirection: "column", gap: 14, animationDelay: "120ms" }}
+      >
+        <CardHeader title="自选池" hint="当日分时 · 盈亏贡献" />
         {items.length === 0 ? (
           <div style={{ padding: "32px 20px", textAlign: "center" }}>
             <span style={{ fontSize: 13, color: "var(--muted-strong)" }}>暂无自选，点击右上角「添加自选」开始跟踪</span>

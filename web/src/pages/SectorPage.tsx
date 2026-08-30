@@ -1,4 +1,5 @@
 import PageHeader from "@/components/layout/PageHeader";
+import CardHeader from "@/components/layout/CardHeader";
 import BaseCard from "@/components/common/BaseCard";
 import DataTable, { RowSparkline } from "@/components/common/DataTable";
 import { useSectors } from "@/hooks/useSectors";
@@ -14,11 +15,8 @@ export default function SectorPage() {
         date={undefined}
       />
 
-      <BaseCard style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>申万一级行业 · 涨跌排名</span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>按涨跌幅排序 · 单位 %</span>
-        </div>
+      <BaseCard className="mr-enter" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <CardHeader title="申万一级行业 · 涨跌排名" hint="按涨跌幅排序 · 单位 %" />
         <DataTable
           columns={[
             { label: "板块", className: "colName" },

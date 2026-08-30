@@ -8,19 +8,24 @@
 .headerLeft {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
+/* v2：22px 在 1440 宽内容区中层级过弱，提升到 display 级并加负字距 */
 .pageTitle {
-  font-size: 22px;
+  font-size: 32px;
   font-weight: 600;
   color: var(--ink);
+  letter-spacing: -0.5px;
+  line-height: 38px;
 }
 
 .pageSub {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 400;
   color: var(--muted);
+  letter-spacing: -0.1px;
+  line-height: 22px;
 }
 
 .headerRight {
@@ -30,6 +35,6 @@
 }
 
 .date {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
 }

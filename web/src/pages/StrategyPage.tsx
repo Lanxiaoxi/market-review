@@ -1,4 +1,5 @@
 import PageHeader from "@/components/layout/PageHeader";
+import CardHeader from "@/components/layout/CardHeader";
 import BaseCard from "@/components/common/BaseCard";
 import StrategyChart from "@/components/charts/StrategyChart";
 
@@ -15,11 +16,8 @@ export default function StrategyPage() {
         sub="承载自制图表与深度分析 · 全屏宽幅画布"
       />
 
-      <BaseCard style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>自定义策略曲线</span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>策略收益 vs 沪深300 · 含成交量</span>
-        </div>
+      <BaseCard className="mr-enter" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <CardHeader title="自定义策略曲线" hint="策略收益 vs 沪深300 · 含成交量" />
         <StrategyChart
           strategyData={strategyData}
           benchmarkData={benchmarkData}

@@ -5,6 +5,8 @@ interface PlaceholderCardProps {
   text?: string;
   icon?: ReactNode;
   children?: ReactNode;
+  /** 可选槽（虚线 + hover 强调）；数据为空的占位保持静态 */
+  actionable?: boolean;
 }
 
 const PlusIcon = () => (
@@ -14,9 +16,14 @@ const PlusIcon = () => (
   </svg>
 );
 
-export default function PlaceholderCard({ text = "选择图表", icon, children }: PlaceholderCardProps) {
+export default function PlaceholderCard({
+  text = "选择图表",
+  icon,
+  children,
+  actionable = false,
+}: PlaceholderCardProps) {
   return (
-    <div className={styles.card}>
+    <div className={`${styles.card} ${actionable ? styles.actionable : ""}`}>
       {children ? (
         children
       ) : (

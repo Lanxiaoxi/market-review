@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Outlet } from "react-router";
 import Sidebar from "@/components/layout/Sidebar";
+import PageSkeleton from "@/components/common/Skeleton";
 
 export default function App() {
   return (
@@ -11,15 +12,25 @@ export default function App() {
           flex: 1,
           minWidth: 0,
           background: "var(--bg-content)",
-          padding: 28,
           display: "flex",
-          flexDirection: "column",
-          gap: 24,
+          justifyContent: "center",
         }}
       >
-        <Suspense fallback={<div style={{ color: "var(--muted)", fontSize: 13 }}>加载中…</div>}>
-          <Outlet />
-        </Suspense>
+        {/* v2：内容区限制最大宽度，宽屏下不无限拉伸 */}
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "var(--content-max)",
+            padding: "var(--pad-content)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--gap-section)",
+          }}
+        >
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </div>
       </main>
     </div>
   );
