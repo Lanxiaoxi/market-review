@@ -86,7 +86,7 @@ function SectorRank({
         <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span
             style={{
-              flex: "0 0 72px",
+              flex: "0 0 96px",
               fontSize: 13,
               fontWeight: 500,
               color: "var(--ink)",
