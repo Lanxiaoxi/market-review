@@ -75,6 +75,7 @@ function SectorRow({
         marginLeft: -6,
       }}
     >
+      <span style={{ flex: "0 0 88px", fontSize: 13, fontWeight: 500, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
       {topBadge && (
         <span
           style={{
@@ -90,7 +91,6 @@ function SectorRow({
           {topBadge}
         </span>
       )}
-      <span style={{ flex: "0 0 88px", fontSize: 13, fontWeight: 500, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
       <span className="num" style={{
         flex: "0 0 72px", fontSize: 13, fontWeight: 500, textAlign: "right",
         color: isUp ? "var(--up)" : "var(--down)",
