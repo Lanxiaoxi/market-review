@@ -55,11 +55,11 @@ function PinButton({
   );
 }
 
-/** 时间范围选项：近7天 / 近30天 / 默认（60 个交易日） */
+/** 时间范围选项：默认（60 个交易日）在左，近7天 / 近30天 依次 */
 const RANGE_OPTIONS = [
+  { label: "默认", value: "default" },
   { label: "近7天", value: "7d" },
   { label: "近30天", value: "30d" },
-  { label: "默认", value: "default" },
 ];
 
 export default function CustomChartPage() {
