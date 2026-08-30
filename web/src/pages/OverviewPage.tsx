@@ -9,6 +9,8 @@ import PillButton from "@/components/common/PillButton";
 import Chip from "@/components/common/Chip";
 import PlaceholderCard from "@/components/common/PlaceholderCard";
 import IntradayChart from "@/components/charts/IntradayChart";
+import BarDistChart from "@/components/charts/BarDistChart";
+import TurnoverChart from "@/components/charts/TurnoverChart";
 import BreadthTable from "@/components/common/BreadthTable";
 import { TOKENS } from "@/components/charts/BaseChart";
 import { useOverview } from "@/hooks/useOverview";
@@ -108,6 +110,23 @@ function MiniChart({ type }: { type: string }) {
         ))}
         {[6, 10, 8, 14, 9, 12, 15, 8, 11, 6].map((h, i) => (
           <rect key={`d${i}`} x={11 + i * 14} y={44 - h} width="6" height={h} rx="1" fill="var(--down)" />
+        ))}
+      </svg>
+    );
+  }
+  // breadthSeries：上涨红 / 平盘灰 / 下跌绿 堆叠柱
+  if (type === "breadthSeries") {
+    const up = [14, 18, 16, 20, 17, 22, 19, 23, 20, 24];
+    const flat = [6, 5, 7, 4, 6, 4, 5, 3, 5, 3];
+    const down = [8, 7, 9, 6, 8, 5, 7, 4, 6, 4];
+    return (
+      <svg width="150" height="48" viewBox="0 0 150 48" fill="none" style={{ display: "block" }}>
+        {up.map((h, i) => (
+          <g key={i}>
+            <rect x={4 + i * 14} y={44 - h} width="6" height={h} rx="1" fill="var(--up)" />
+            <rect x={4 + i * 14} y={44 - h - flat[i]} width="6" height={flat[i]} rx="1" fill="var(--series-base)" />
+            <rect x={4 + i * 14} y={44 - h - flat[i] - down[i]} width="6" height={down[i]} rx="1" fill="var(--down)" />
+          </g>
         ))}
       </svg>
     );
@@ -219,6 +238,7 @@ export default function OverviewPage() {
     "turnover-intraday": "成交额分时",
     "if-basis": "股指期现对比",
     "limit-count": "涨跌停家数",
+    "breadth-series": "市场宽度",
   };
 
   // ─── 指数分时对比（T7.2，今日用真实分时，5日/20日用指数 sparkline） ───
@@ -401,6 +421,45 @@ export default function OverviewPage() {
           style={{ flex: "1 1 400px", minWidth: 0, animationDelay: "140ms" }}
         >
           <BreadthTable breadth={data?.breadth} showTurnover />
+        </BaseCard>
+      </div>
+
+      {/* 当日详情：涨跌家数分布 + 成交额分时（当日信息，自自定义图表页移入） */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <BaseCard
+          className="mr-enter"
+          style={{ display: "flex", flexDirection: "column", gap: 14, animationDelay: "160ms" }}
+        >
+          <CardHeader title="涨跌家数分布" hint="当日 7 档分布" />
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "var(--up)" }}>上涨区间</span>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>平盘</span>
+            <span style={{ fontSize: 12, color: "var(--down)" }}>下跌区间</span>
+          </div>
+          {(data?.breadth.dist ?? []).length > 0 ? (
+            <BarDistChart data={data?.breadth.dist ?? []} height={260} />
+          ) : (
+            <PlaceholderCard text="暂无有效数据" />
+          )}
+        </BaseCard>
+
+        <BaseCard
+          className="mr-enter"
+          style={{ display: "flex", flexDirection: "column", gap: 14, animationDelay: "200ms" }}
+        >
+          <CardHeader title="成交额分时" hint="上证指数 · 当日" />
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>区间成交额</span>
+            <span style={{ fontSize: 12, color: "var(--accent)" }}>累计成交额</span>
+          </div>
+          {(() => {
+            const sh = intraday?.codes["sh000001"];
+            return sh && sh.times.length > 0 ? (
+              <TurnoverChart times={sh.times} amounts={sh.amounts} height={260} />
+            ) : (
+              <PlaceholderCard text={viewDate ? "历史日期无分时数据" : "暂无有效数据"} />
+            );
+          })()}
         </BaseCard>
       </div>
 

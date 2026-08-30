@@ -4,15 +4,12 @@ import CardHeader from "@/components/layout/CardHeader";
 import BaseCard from "@/components/common/BaseCard";
 import PlaceholderCard from "@/components/common/PlaceholderCard";
 import Segmented from "@/components/common/Segmented";
-import BarDistChart from "@/components/charts/BarDistChart";
-import TurnoverChart from "@/components/charts/TurnoverChart";
 import BasisChart from "@/components/charts/BasisChart";
 import LimitCountChart from "@/components/charts/LimitCountChart";
-import { TOKENS } from "@/components/charts/BaseChart";
-import { useOverview } from "@/hooks/useOverview";
-import { useIntraday } from "@/hooks/useIntraday";
+import BreadthSeriesChart from "@/components/charts/BreadthSeriesChart";
 import { useIfBasis } from "@/hooks/useIfBasis";
 import { useLimitCounts } from "@/hooks/useLimitCounts";
+import { useBreadthSeries } from "@/hooks/useBreadthSeries";
 import { useChartLibQuery, useToggleChartPin } from "@/hooks/useChartLib";
 import { useChartLibStore } from "@/stores/chartLib";
 
@@ -58,16 +55,6 @@ function PinButton({
   );
 }
 
-const DIST_COLOR: Record<string, string> = {
-  "涨停": TOKENS.up,
-  "涨2-10%": TOKENS.up,
-  "涨0-2%": TOKENS.up,
-  "平盘": TOKENS.seriesBase,
-  "跌0-2%": TOKENS.down,
-  "跌2-10%": TOKENS.down,
-  "跌停": TOKENS.down,
-};
-
 /** 时间范围选项：近7天 / 近30天 / 默认（60 个交易日） */
 const RANGE_OPTIONS = [
   { label: "近7天", value: "7d" },
@@ -76,83 +63,33 @@ const RANGE_OPTIONS = [
 ];
 
 export default function CustomChartPage() {
-  const { data } = useOverview();
   useChartLibQuery(); // 加载图表库到 store
-  const { data: intraday } = useIntraday(["sh000001"]); // 上证指数分时（成交额）
   const [contract, setContract] = useState("IF"); // 期现对比合约（IF/IH/IM）
   // 各表独立的时间范围：近7天 / 近30天 / 默认（60 个交易日，即当前维度）
   const [basisRange, setBasisRange] = useState("default");
   const [limitRange, setLimitRange] = useState("default");
+  const [breadthRange, setBreadthRange] = useState("default");
   const basisDays = basisRange === "7d" ? 7 : basisRange === "30d" ? 30 : 60;
   const limitDays = limitRange === "7d" ? 7 : limitRange === "30d" ? 30 : 60;
+  const breadthDays = breadthRange === "7d" ? 7 : breadthRange === "30d" ? 30 : 60;
   const { data: basis } = useIfBasis(contract, basisDays);
   const { data: limitCounts } = useLimitCounts(limitDays); // 日线涨跌停家数
+  const { data: breadthSeries } = useBreadthSeries(breadthDays); // 日线市场宽度
 
   const charts = useChartLibStore((s) => s.charts);
-  const barDist = charts.find((c) => c.id === "bar-dist");
-  const turnover = charts.find((c) => c.id === "turnover-intraday");
   const ifBasis = charts.find((c) => c.id === "if-basis");
   const limitCount = charts.find((c) => c.id === "limit-count");
-
-  // 涨跌家数分布：直接使用后端 7 档真实统计（不再用 up*0.86 近似）
-  const distData = (data?.breadth.dist ?? []).map((d) => ({
-    label: d.label,
-    value: d.value,
-    color: DIST_COLOR[d.label] ?? TOKENS.seriesBase,
-  }));
-
-  const shIntraday = intraday?.codes["sh000001"];
+  const breadthSeriesChart = charts.find((c) => c.id === "breadth-series");
 
   return (
     <>
       <PageHeader title="自定义图表" sub="我的行情统计图表" />
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        {/* 涨跌家数分布 */}
-        <BaseCard
-          className="mr-enter"
-          style={{ display: "flex", flexDirection: "column", gap: 14, animationDelay: "0ms" }}
-        >
-          <CardHeader
-            title="涨跌家数分布"
-            actions={barDist && <PinButton id={barDist.id} name={barDist.name} type={barDist.type} pinned={barDist.pinned} />}
-          />
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--up)" }}>上涨区间</span>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>平盘</span>
-            <span style={{ fontSize: 12, color: "var(--down)" }}>下跌区间</span>
-          </div>
-          {distData.length > 0 ? (
-            <BarDistChart data={distData} height={300} />
-          ) : (
-            <PlaceholderCard text="暂无有效数据" />
-          )}
-        </BaseCard>
-
-        {/* 成交额分时 */}
-        <BaseCard
-          className="mr-enter"
-          style={{ display: "flex", flexDirection: "column", gap: 14, animationDelay: "60ms" }}
-        >
-          <CardHeader
-            title="成交额分时"
-            actions={turnover && <PinButton id={turnover.id} name={turnover.name} type={turnover.type} pinned={turnover.pinned} />}
-          />
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>区间成交额</span>
-            <span style={{ fontSize: 12, color: "var(--accent)" }}>累计成交额</span>
-          </div>
-          {shIntraday && shIntraday.times.length > 0 ? (
-            <TurnoverChart times={shIntraday.times} amounts={shIntraday.amounts} height={300} />
-          ) : (
-            <PlaceholderCard text="暂无有效数据" />
-          )}
-        </BaseCard>
-
         {/* 股指期货期现对比（通栏，分段切换合约） */}
         <BaseCard
           className="mr-enter"
-          style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 14, animationDelay: "120ms" }}
+          style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 14, animationDelay: "0ms" }}
         >
           <CardHeader
             title="股指期货期现对比"
@@ -199,10 +136,47 @@ export default function CustomChartPage() {
           )}
         </BaseCard>
 
+        {/* 市场宽度（通栏，日线序列） */}
+        <BaseCard
+          className="mr-enter"
+          style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 14, animationDelay: "60ms" }}
+        >
+          <CardHeader
+            title="市场宽度"
+            actions={
+              <>
+                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>每日上涨/平盘/下跌家数 · 近 {breadthDays} 个交易日</span>
+                <Segmented
+                  options={RANGE_OPTIONS}
+                  value={breadthRange}
+                  onChange={setBreadthRange}
+                  ariaLabel="市场宽度时间范围"
+                />
+                {breadthSeriesChart && <PinButton id={breadthSeriesChart.id} name={breadthSeriesChart.name} type={breadthSeriesChart.type} pinned={breadthSeriesChart.pinned} />}
+              </>
+            }
+          />
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "var(--up)" }}>上涨</span>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>平盘</span>
+            <span style={{ fontSize: 12, color: "var(--down)" }}>下跌</span>
+            {breadthSeries && breadthSeries.dates.length > 0 && (
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                最新一日（{breadthSeries.dates[breadthSeries.dates.length - 1]}）：上涨 {breadthSeries.up[breadthSeries.up.length - 1]} · 平盘 {breadthSeries.flat[breadthSeries.flat.length - 1]} · 下跌 {breadthSeries.down[breadthSeries.down.length - 1]}
+              </span>
+            )}
+          </div>
+          {breadthSeries && breadthSeries.dates.length > 0 ? (
+            <BreadthSeriesChart data={breadthSeries} height={300} />
+          ) : (
+            <PlaceholderCard text="暂无有效数据" />
+          )}
+        </BaseCard>
+
         {/* 日线涨停/跌停家数（通栏） */}
         <BaseCard
           className="mr-enter"
-          style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 14, animationDelay: "180ms" }}
+          style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 14, animationDelay: "120ms" }}
         >
           <CardHeader
             title="涨跌停家数"

@@ -1,10 +1,20 @@
 import { useMemo } from "react";
 import BaseChart, { TOKENS } from "./BaseChart";
 
+/** 分布档位 → 颜色（与首页市场宽度同语义；ECharts Canvas 需要真实 hex，不能用 CSS var()） */
+export const DIST_COLOR: Record<string, string> = {
+  "涨停": TOKENS.up,
+  "涨2-10%": TOKENS.up,
+  "涨0-2%": TOKENS.up,
+  "平盘": TOKENS.seriesBase,
+  "跌0-2%": TOKENS.down,
+  "跌2-10%": TOKENS.down,
+  "跌停": TOKENS.down,
+};
+
 interface BarDistItem {
   label: string;
   value: number;
-  color: string; // 必须是 TOKENS 中的真实 hex 值（ECharts Canvas 不支持 CSS var()）
 }
 
 interface BarDistChartProps {
@@ -12,6 +22,7 @@ interface BarDistChartProps {
   height?: number;
 }
 
+/** 涨跌家数分布（7 档柱状图），颜色按档位语义在组件内映射，页面直接传后端 dist 即可 */
 export default function BarDistChart({
   data,
   height = 300,
@@ -36,7 +47,7 @@ export default function BarDistChart({
           data: data.map((d) => ({
             value: d.value,
             itemStyle: {
-              color: d.color,
+              color: DIST_COLOR[d.label] ?? TOKENS.seriesBase,
               borderRadius: [2, 2, 0, 0],
             },
           })),
