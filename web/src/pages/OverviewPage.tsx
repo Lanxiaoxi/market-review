@@ -18,8 +18,11 @@ import { useIntraday } from "@/hooks/useIntraday";
 
 // ─── Gate G2：盘中 60s 轮询开关（默认关闭，改为 true 启用） ───
 const MARKET_POLLING_ENABLED = false;
-
 const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+
+// 历史回放：本地库覆盖起点（首次 250 天回填后）与上海时区「今天」
+const HISTORY_START = "2025-08-19";
+const shanghaiToday = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
 
 /** 分时对比图的三条线：代码显式映射，避免按数组下标取数错位 */
 const INDEX_SERIES = [
@@ -195,9 +198,11 @@ function SectorRank({
 
 export default function OverviewPage() {
   const navigate = useNavigate();
-  const { data, isError } = useOverview();
+  // 历史日期回放：null = 最新；非空 = 指定日期（后端吸附到最近交易日）
+  const [viewDate, setViewDate] = useState<string | null>(null);
+  const { data, isError } = useOverview(viewDate);
   const { data: chartLib } = useChartLibQuery();
-  usePolling(MARKET_POLLING_ENABLED); // Gate G2
+  usePolling(MARKET_POLLING_ENABLED && !viewDate); // Gate G2：历史回放不轮询
 
   // T7.2: 分段控件状态（只影响本卡）
   const [period, setPeriod] = useState("today");
@@ -222,7 +227,7 @@ export default function OverviewPage() {
 
   const { data: intraday } = useIntraday(
     INDEX_SERIES.map((d) => d.tencent),
-    period === "today"
+    period === "today" && !viewDate // 历史回放不拉实时分时（分时是当日数据）
   );
 
   // 今日：仅使用真实分时；无数据则为空数组（页面显示「暂无有效数据」）
@@ -266,7 +271,11 @@ export default function OverviewPage() {
   if (!data || indices.length === 0) {
     return (
       <>
-        <PageHeader title="今日总览" sub="3秒扫盘 · 把握全局 · 关键数字与微缩趋势" date="—" />
+        <PageHeader
+          title={viewDate ? "历史总览" : "今日总览"}
+          sub="3秒扫盘 · 把握全局 · 关键数字与微缩趋势"
+          date="—"
+        />
         <PlaceholderCard text="暂无有效数据" />
       </>
     );
@@ -276,10 +285,35 @@ export default function OverviewPage() {
     <>
       {/* 页面标题栏 */}
       <PageHeader
-        title="今日总览"
-        sub="3秒扫盘 · 把握全局 · 关键数字与微缩趋势"
+        title={viewDate ? "历史总览" : "今日总览"}
+        sub={viewDate ? "历史日期回放 · 数据来自本地库（零回源）" : "3秒扫盘 · 把握全局 · 关键数字与微缩趋势"}
         date={dateStr}
       >
+        <input
+          type="date"
+          value={viewDate ?? ""}
+          min={HISTORY_START}
+          max={shanghaiToday()}
+          onChange={(e) => setViewDate(e.target.value || null)}
+          title="选择历史日期查看（非交易日自动吸附到最近交易日）"
+          style={{
+            padding: "5px 10px",
+            borderRadius: 8,
+            border: "1px solid var(--border)",
+            background: "var(--card)",
+            color: "var(--ink)",
+            fontSize: 13,
+            fontFamily: "inherit",
+          }}
+        />
+        {viewDate && (
+          <PillButton
+            onClick={() => setViewDate(null)}
+            style={{ background: "var(--chip-bg)", color: "var(--muted-strong)" }}
+          >
+            最新
+          </PillButton>
+        )}
         <Chip
           text={data?.closed ? "已收盘" : "交易中"}
           dotColor={data?.closed ? "var(--series-base)" : "var(--accent)"}
@@ -305,11 +339,13 @@ export default function OverviewPage() {
       {/* T7.4: 错误提示（tooltip 语义，不用 spinner） */}
       {isError && (
         <div
-          title="接口暂不可用，正在展示缓存数据"
+          title={viewDate ? "所选日期无本地数据" : "接口暂不可用，正在展示缓存数据"}
           className="mr-fade"
           style={{ fontSize: 12, color: "var(--muted)", padding: "6px 12px", background: "var(--chip-bg)", borderRadius: "var(--r-pill)", alignSelf: "flex-start" }}
         >
-          ⚠ 数据接口暂不可用，已切换为缓存数据
+          {viewDate
+            ? `⚠ 所选日期 ${viewDate} 暂无数据（本地库覆盖 ${HISTORY_START} 之后）`
+            : "⚠ 数据接口暂不可用，已切换为缓存数据"}
         </div>
       )}
 
@@ -350,7 +386,9 @@ export default function OverviewPage() {
             ))}
           </div>
           {period === "today" && !todaySeries.some((s) => s.data.length > 0) ? (
-            <PlaceholderCard text="暂无有效数据" />
+            <PlaceholderCard
+              text={viewDate ? "历史日期无分时数据，请切换「近5日 / 近20日」" : "暂无有效数据"}
+            />
           ) : (
             <IntradayChart series={intradaySeries} timeLabels={timeLabels} height={216} />
           )}

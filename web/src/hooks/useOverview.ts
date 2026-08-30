@@ -1,15 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchOverview } from "@/api/overview";
+import { fetchOverview, fetchOverviewByDate } from "@/api/overview";
 import { useMarketStore } from "@/stores/market";
 import type { OverviewData } from "@/types/market";
 
-export function useOverview() {
+export function useOverview(date?: string | null) {
   const setSnapshot = useMarketStore((s) => s.setSnapshot);
 
   return useQuery<OverviewData>({
-    queryKey: ["overview"],
+    queryKey: ["overview", date ?? "latest"],
     queryFn: async () => {
-      const data = await fetchOverview(); // 失败即抛错，页面显示「暂无有效数据」
+      // date 为空 → 最新总览；指定 date → 历史日期（后端 L2 按日聚合）
+      const data = date ? await fetchOverviewByDate(date) : await fetchOverview();
       setSnapshot(data);
       return data;
     },
