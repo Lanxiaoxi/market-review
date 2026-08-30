@@ -181,12 +181,13 @@ export default function OverviewPage() {
 
   const series5d = visibleSeries.map((def) => ({
     name: def.name,
-    data: toPctChange(idxByCode(def.code)?.sparkline.slice(-5) ?? [14, 14, 14, 14, 14]),
+    // 用真实收盘价算涨跌幅（sparkline 是归一化坐标，直接算百分比会失真）
+    data: toPctChange(idxByCode(def.code)?.closes.slice(-5) ?? []),
     color: def.color,
   }));
   const series20d = visibleSeries.map((def) => ({
     name: def.name,
-    data: toPctChange(idxByCode(def.code)?.sparkline ?? [14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14]),
+    data: toPctChange(idxByCode(def.code)?.closes ?? []),
     color: def.color,
   }));
 
@@ -195,7 +196,7 @@ export default function OverviewPage() {
   const todayTimes = intraday?.codes["sh000001"]?.times;
   const todayLen = intraday?.codes["sh000001"]?.prices.length ?? 12;
   const todayLabels = todayTimes && todayTimes.length > 0 ? todayTimes : sessionLabels(todayLen);
-  const sparkLen = idxByCode("000001")?.sparkline?.length ?? 12;
+  const sparkLen = idxByCode("000001")?.closes?.length ?? 12;
   const labels20d = Array.from({ length: sparkLen }, (_, i) =>
     i === sparkLen - 1 ? "今日" : `T-${sparkLen - 1 - i}`
   );

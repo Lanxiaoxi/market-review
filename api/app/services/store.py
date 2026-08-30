@@ -500,6 +500,7 @@ async def read_indices(
                 "change": round(latest.change, 2),
                 "change_pct": round(latest.pct_chg, 2),
                 "sparkline": normalize_sparkline([i.close for i in items]),
+                "closes": [round(i.close, 2) for i in items],  # 真实收盘价（升序，近 lookback 日）
             }
         )
     return result or None

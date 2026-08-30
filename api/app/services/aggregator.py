@@ -123,6 +123,7 @@ async def build_overview(
             change=i["change"],
             change_pct=i["change_pct"],
             sparkline=i["sparkline"],
+            closes=i.get("closes", []),
         )
         for i in indices_raw
     ]

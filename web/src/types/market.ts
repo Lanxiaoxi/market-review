@@ -8,6 +8,7 @@ export interface IndexSnapshot {
   change: number;
   changePct: number;
   sparkline: number[]; // 12 个归一化点
+  closes: number[];    // 真实收盘价（升序，近 12 个交易日）
 }
 
 /** 涨跌家数分布区间 */

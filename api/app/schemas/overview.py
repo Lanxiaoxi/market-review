@@ -19,6 +19,7 @@ class IndexSnapshotOut(CamelModel):
     change: float
     change_pct: float
     sparkline: list[float]
+    closes: list[float] = []   # 真实收盘价（升序，近 12 个交易日）
 
 
 class LimitUpStockOut(CamelModel):
