@@ -62,8 +62,9 @@ async def fetch_hk_index_range(start, end) -> list[dict]:
     """港股指数日线区间（Tushare / THS 均无港股指数，由腾讯兜底）
 
     腾讯日 K 按「根数」取，故按区间天数换算并多取一些以覆盖节假日。
-    change / pct_chg 腾讯日 K 不直接提供，置 0（港股卡仅展示点位与涨跌幅，
-    涨跌幅由收盘价差分在调用侧计算）。
+    change / pct_chg 腾讯日 K 不直接提供，由收盘价差分计算；prev 用区间
+    前最近一根 K 锚定（含区间外日期），否则单日区间或区间起点会因缺前值
+    而把涨跌幅算成 0。
     """
     bars = max(20, int((end - start).days * 1.6) + 20)
     rows: list[dict] = []
@@ -71,20 +72,21 @@ async def fetch_hk_index_range(start, end) -> list[dict]:
         series = await fetch_hk_kline_rows(code, bars)
         prev: float | None = None
         for d, close in series or []:
-            if d is None or not (start <= d <= end):
+            if d is None:
                 continue
-            rows.append(
-                {
-                    "ts_code": code,
-                    "code": code,
-                    "name": HK_INDICES[code]["name"],
-                    "trade_date": d,
-                    "close": close,
-                    "change": round(close - prev, 2) if prev is not None else 0,
-                    "pct_chg": round((close / prev - 1) * 100, 2) if prev else 0,
-                    "amount": None,
-                }
-            )
+            if start <= d <= end:
+                rows.append(
+                    {
+                        "ts_code": code,
+                        "code": code,
+                        "name": HK_INDICES[code]["name"],
+                        "trade_date": d,
+                        "close": close,
+                        "change": round(close - prev, 2) if prev is not None else 0,
+                        "pct_chg": round((close / prev - 1) * 100, 2) if prev else 0,
+                        "amount": None,
+                    }
+                )
             prev = close
     return rows
 
