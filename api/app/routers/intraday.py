@@ -53,7 +53,7 @@ async def get_intraday(
 
     days=1：收盘后读本地当日固化，盘中走腾讯实时（内存短 TTL）。
     days>1：最近 N 个交易日分时拼接（times 形如 "MM-DD HH:MM"），
-    本地缺失的日期用 0 值占位——随每日 15:35 固化积累自动填满；最新日盘中未定格时实时兜底。
+    本地缺失的日期用 0 值占位——随每日 18:00 固化积累自动填满；最新日盘中未定格时实时兜底。
     """
     code_list = [c.strip() for c in codes.split(",") if c.strip()]
     if not code_list:
