@@ -1,0 +1,15 @@
+name: checkout-test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: [self-hosted, linux, x64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: 确认代码到位
+        run: |
+          echo "checkout 成功 ✅"
+          ls -la
+          git log --oneline -1
