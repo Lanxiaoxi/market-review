@@ -12,6 +12,9 @@ jobs:
   web-build:
     runs-on: [self-hosted, linux, x64]
     steps:
+      - name: GitHub 走 SSH (CN 网络 HTTPS 会被限速)
+        run: git config --global url."git@github.com:".insteadOf "https://github.com/"
+
       - uses: actions/checkout@v4
 
       - name: 安装依赖 (npm ci)
