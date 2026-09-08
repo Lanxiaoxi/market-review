@@ -24,7 +24,7 @@ jobs:
       - name: 部署前测试 (api)
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          uv sync --frozen
+          uv sync --frozen --extra dev
           uv run pytest -q
         working-directory: ${{ github.workspace }}/api
 

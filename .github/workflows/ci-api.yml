@@ -20,7 +20,7 @@ jobs:
       - name: 同步依赖 (uv sync --frozen)
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          uv sync --frozen
+          uv sync --frozen --extra dev
         working-directory: api
 
       - name: 跑测试 (pytest)
