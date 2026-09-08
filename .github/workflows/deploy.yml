@@ -1,0 +1,45 @@
+name: deploy
+
+# 手动触发部署:
+#   GitHub 仓库 → Actions → deploy → Run workflow → 输入 yes
+# 流程: 测试待部署代码 → 生产目录 pull → uv sync → restart → 健康检查
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: '确认部署到生产?输入 yes'
+        required: true
+        default: 'no'
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, x64]
+    if: github.event.inputs.confirm == 'yes'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 部署前测试 (api)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv sync --frozen
+          uv run pytest -q
+        working-directory: ${{ github.workspace }}/api
+
+      - name: 生产目录拉取最新代码
+        run: git pull --ff-only origin main
+        working-directory: /home/tudouni/market-review
+
+      - name: 生产依赖同步
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv sync --frozen
+        working-directory: /home/tudouni/market-review/api
+
+      - name: 重启服务
+        run: sudo systemctl restart market-api.service
+
+      - name: 健康检查
+        run: |
+          sleep 3
+          systemctl is-active market-api.service
+          curl -s -o /dev/null -w 'API HTTP %{http_code}\n' http://127.0.0.1:8668/api/health

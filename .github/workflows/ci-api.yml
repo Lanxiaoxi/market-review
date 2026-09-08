@@ -1,0 +1,27 @@
+name: ci-api
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - '.github/workflows/ci-api.yml'
+  workflow_dispatch:
+
+jobs:
+  api-test:
+    runs-on: [self-hosted, linux, x64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 同步依赖 (uv sync --frozen)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv sync --frozen
+        working-directory: api
+
+      - name: 跑测试 (pytest)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv run pytest -q
+        working-directory: api

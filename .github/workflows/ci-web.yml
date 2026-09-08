@@ -1,0 +1,27 @@
+name: ci-web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/ci-web.yml'
+  workflow_dispatch:
+
+jobs:
+  web-build:
+    runs-on: [self-hosted, linux, x64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装依赖 (npm ci)
+        run: npm ci
+        working-directory: web
+
+      - name: lint
+        run: npm run lint
+        working-directory: web
+
+      - name: 类型检查 + 构建
+        run: npm run build
+        working-directory: web
