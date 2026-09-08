@@ -7,6 +7,9 @@ interface BreadthSeriesChartProps {
   height?: number;
 }
 
+/** 上涨家数半数参考线（全市场约 5400 家，2700 ≈ 多空分界） */
+const BALANCE_LINE = 2700;
+
 /**
  * 日线市场宽度：上涨/平盘/下跌家数堆叠柱（红/灰/绿，与首页市场宽度同语义）。
  * 折线为「上涨/下跌」= 上涨家数 ÷ 下跌家数（涨跌比，右轴），1 为多空平衡。
@@ -46,6 +49,8 @@ export default function BreadthSeriesChart({ data, height = 300 }: BreadthSeries
           type: "value" as const,
           splitLine: { lineStyle: { color: TOKENS.grid } },
           axisLabel: { fontSize: 11 },
+          // 数据整体偏低时也要保证 2700 参考线在可视范围内
+          max: (v: { max: number }) => Math.max(v.max, BALANCE_LINE),
         },
         {
           type: "value" as const,
@@ -87,6 +92,19 @@ export default function BreadthSeriesChart({ data, height = 300 }: BreadthSeries
           data: down,
           itemStyle: { color: TOKENS.down },
           barWidth: "45%",
+          // 半数参考线（与涨跌停家数表的 y=80 线同款）；挂在堆叠最后一条柱上，
+          // 保证画在三层柱体之上而不是被「下跌」柱盖住
+          markLine: {
+            symbol: "none",
+            data: [{ yAxis: BALANCE_LINE }],
+            lineStyle: { color: TOKENS.muted, type: "dashed" as const, width: 1 },
+            label: {
+              formatter: String(BALANCE_LINE),
+              position: "insideEndTop" as const,
+              fontSize: 10,
+              color: TOKENS.muted,
+            },
+          },
         },
         {
           type: "line" as const,
