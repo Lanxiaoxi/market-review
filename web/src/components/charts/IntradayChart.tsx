@@ -4,6 +4,8 @@ import BaseChart, { TOKENS } from "./BaseChart";
 interface IntradaySeries {
   name: string;
   data: number[];
+  /** 与 data 等长的原始点位，仅用于 tooltip 展示；缺失时不显示点位 */
+  raw?: number[];
   color: string; // 必须是真实 hex（ECharts Canvas 不支持 CSS var()）
 }
 
@@ -71,7 +73,37 @@ export default function IntradayChart({
         backgroundColor: "#fff",
         borderColor: TOKENS.gridStrong,
         textStyle: { color: TOKENS.ink },
-        valueFormatter: (v: unknown) => `${Number(v).toFixed(2)}%`,
+        // 自定义：时间 + 指数点位 + 涨跌幅（红涨绿跌）
+        formatter: (params: any) => {
+          const list: any[] = Array.isArray(params) ? params : [params];
+          if (list.length === 0) return "";
+          const head = list[0]?.axisValue ?? "";
+          const rows = list
+            .map((p) => {
+              const pct = Number(p?.value ?? 0);
+              const raw = series[p?.seriesIndex ?? 0]?.raw?.[p?.dataIndex ?? 0];
+              const color =
+                pct > 0 ? TOKENS.up : pct < 0 ? TOKENS.down : TOKENS.muted;
+              const sign = pct > 0 ? "+" : "";
+              const price =
+                typeof raw === "number" && raw > 0
+                  ? `<span style="margin-left:14px;font-variant-numeric:tabular-nums">${raw.toFixed(2)}</span>`
+                  : "";
+              return (
+                `<div style="display:flex;align-items:center;gap:6px;margin-top:3px">` +
+                `${p?.marker ?? ""}` +
+                `<span style="flex:1;white-space:nowrap">${p?.seriesName ?? ""}</span>` +
+                price +
+                `<span style="margin-left:10px;color:${color};font-variant-numeric:tabular-nums">${sign}${pct.toFixed(2)}%</span>` +
+                `</div>`
+              );
+            })
+            .join("");
+          return (
+            `<div style="font-size:12px;line-height:1.5">` +
+            `<div style="color:${TOKENS.muted}">${head}</div>${rows}</div>`
+          );
+        },
       },
       series: series.map((s, i) => ({
         type: "line" as const,

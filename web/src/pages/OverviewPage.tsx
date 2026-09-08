@@ -163,9 +163,11 @@ export default function OverviewPage() {
   // 历史回放时强制忽略 intraday（react-query 停用不会清缓存，否则会残留最新日分时）
   const todaySeries = visibleSeries.map((def) => {
     const intra = !viewDate ? intraday?.codes[def.tencent] : undefined;
+    const prices = intra && intra.prices.length > 0 ? intra.prices : [];
     return {
       name: def.name,
-      data: intra && intra.prices.length > 0 ? toPctChange(intra.prices) : [],
+      data: prices.length > 0 ? toPctChange(prices) : [],
+      raw: prices,
       color: def.color,
     };
   });
@@ -187,12 +189,14 @@ export default function OverviewPage() {
         }
         data.push(base > 0 ? ((p - base) / base) * 100 : 0);
       });
-      return { name: def.name, data, color: def.color };
+      return { name: def.name, data, raw: intra.prices, color: def.color };
     }
     // 历史回放 / 数据缺失 → 收盘价日线（近 5 日）
+    const closes = idxByCode(def.code)?.closes.slice(-5) ?? [];
     return {
       name: def.name,
-      data: toPctChange(idxByCode(def.code)?.closes.slice(-5) ?? []),
+      data: toPctChange(closes),
+      raw: closes,
       color: def.color,
     };
   });
