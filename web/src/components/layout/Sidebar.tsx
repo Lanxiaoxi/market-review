@@ -70,6 +70,20 @@ const navItems: NavItem[] = [
       </svg>
     ),
   },
+  {
+    id: "journal",
+    title: "订单复盘",
+    sub: "交易留痕 · 开平仓逻辑",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <rect x="2.6" y="2.4" width="12.8" height="13.2" rx="2" stroke="var(--icon)" strokeWidth="1.3" />
+        <line x1="5.2" y1="5.8" x2="12.8" y2="5.8" stroke="var(--icon)" strokeWidth="1.3" strokeLinecap="round" />
+        <line x1="5.2" y1="8.8" x2="12.8" y2="8.8" stroke="var(--icon)" strokeWidth="1.3" strokeLinecap="round" />
+        <path d="M5.2 11.8 H9" stroke="var(--icon)" strokeWidth="1.3" strokeLinecap="round" />
+        <path d="M11.6 10.6 L13 12 L15.6 9.4" stroke="var(--up)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
 ];
 
 export default function Sidebar() {

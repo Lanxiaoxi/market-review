@@ -8,6 +8,7 @@ const SectorPage = lazy(() => import("@/pages/SectorPage"));
 const WatchlistPage = lazy(() => import("@/pages/WatchlistPage"));
 const StrategyPage = lazy(() => import("@/pages/StrategyPage"));
 const HistoryPage = lazy(() => import("@/pages/HistoryPage"));
+const JournalPage = lazy(() => import("@/pages/JournalPage"));
 
 export const router = createBrowserRouter([
   {
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { path: "sector", element: <SectorPage /> },
       { path: "watchlist", element: <WatchlistPage /> },
       { path: "canvas", element: <StrategyPage /> },
+      { path: "journal", element: <JournalPage /> },
       { path: "history", element: <HistoryPage /> },
     ],
   },
