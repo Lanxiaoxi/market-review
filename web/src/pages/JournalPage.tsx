@@ -147,6 +147,7 @@ export default function JournalPage() {
 
       {/* 详情抽屉（可编辑 / 删除） */}
       <OrderDrawer
+        key={selected?.id ?? "none"}
         order={selected}
         onClose={() => setSelected(null)}
         onDeleted={() => setSelected(null)}

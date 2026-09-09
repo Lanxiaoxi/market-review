@@ -34,13 +34,6 @@ export default function OrderDrawer({ order, onClose, onDeleted }: OrderDrawerPr
   const timerRef = useRef<number | null>(null);
   const deleteMut = useDeleteOrder();
 
-  // 订单切换 / 关闭时重置内部态
-  useEffect(() => {
-    setCurrent(order);
-    setEditing(false);
-    setConfirmDel(false);
-  }, [order]);
-
   // Esc：编辑中先退出编辑，否则关闭抽屉
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
