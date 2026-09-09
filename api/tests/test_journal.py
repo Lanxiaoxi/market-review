@@ -36,7 +36,7 @@ def _order_form(**overrides):
     data = {
         "symbol": "贵州茅台",
         "trade_date": "2026-09-08",
-        "amount": "1.25",
+        "amount": "12500",          # 元
         "pnl_type": "win",
         "open_logic": "放量突破",
         "close_logic": "止盈离场",
@@ -58,7 +58,7 @@ async def test_journal_crud_roundtrip(tmp_path, _tmp_uploads):
         assert resp.status_code == 201, resp.text
         created = resp.json()
         assert created["symbol"] == "贵州茅台"
-        assert created["pnl"] == 1.25
+        assert created["pnl"] == 12500
         assert created["imageUrl"].startswith("/uploads/orders/")
 
         # 图片确实落盘
@@ -75,17 +75,17 @@ async def test_journal_crud_roundtrip(tmp_path, _tmp_uploads):
         assert summary["total"] == 1
         assert summary["winCount"] == 1
         assert summary["winRate"] == 100.0
-        assert summary["totalPnl"] == 1.25
+        assert summary["totalPnl"] == 12500
 
         # 更新：换字段不换图（表单不带 image 字段）
         up = await client.put(
             f"/api/orders/{order_id}",
-            data=_order_form(symbol="五粮液", amount="0.8", pnl_type="loss", note="更新后的笔记"),
+            data=_order_form(symbol="五粮液", amount="8000", pnl_type="loss", note="更新后的笔记"),
         )
         assert up.status_code == 200, up.text
         updated = up.json()
         assert updated["symbol"] == "五粮液"
-        assert updated["pnl"] == -0.8
+        assert updated["pnl"] == -8000
         assert updated["imageUrl"] == created["imageUrl"]  # 图未动
 
         # 更新：换图 → 旧文件被清理、新文件落盘

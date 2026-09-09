@@ -13,7 +13,7 @@ class TradeOrder(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     symbol: str = Field(index=True, max_length=32)           # 标的名（必填）
     trade_date: str = Field(index=True, max_length=10)       # 订单日期 YYYY-MM-DD（列表排序字段）
-    pnl: float = Field(default=0)                            # 带符号盈亏（万元，正盈负亏）
+    pnl: float = Field(default=0)                            # 带符号盈亏（元，正盈负亏）
     open_logic: str = Field(default="", max_length=32)       # 开仓逻辑
     close_logic: str = Field(default="", max_length=32)      # 平仓逻辑
     note: str = Field(default="", max_length=2000)           # 订单笔记

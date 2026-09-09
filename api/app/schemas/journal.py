@@ -28,7 +28,7 @@ class JournalSummaryOut(CamelModel):
     win_count: int            # 盈利笔数
     loss_count: int           # 亏损笔数
     win_rate: float           # 胜率 %（盈利笔 / 总笔）
-    total_pnl: float          # 累计盈亏（万元）
+    total_pnl: float          # 累计盈亏（元）
 
 
 class JournalResponse(CamelModel):

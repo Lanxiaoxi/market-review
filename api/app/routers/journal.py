@@ -60,7 +60,7 @@ def _valid_trade_date(value: str) -> str:
 
 
 def _parse_pnl(amount: str | None, pnl_type: str | None) -> float:
-    """正数金额 + 盈亏类型 → 带符号盈亏（万元）"""
+    """正数金额（元）+ 盈亏类型 → 带符号盈亏（元，正盈负亏）"""
     if amount is None or pnl_type is None:
         raise HTTPException(422, "盈亏金额与类型必须一起提交")
     try:
@@ -154,7 +154,7 @@ async def list_orders(session: AsyncSession = Depends(get_session)):
 async def create_order(
     symbol: str = Form(...),
     trade_date: str = Form(...),
-    amount: str = Form(...),          # 正数（万元）
+    amount: str = Form(...),          # 正数（元）
     pnl_type: str = Form(...),        # win | loss
     open_logic: str = Form(...),
     close_logic: str = Form(...),
