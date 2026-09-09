@@ -6,7 +6,7 @@ export interface TradeOrder {
   symbol: string;
   /** 订单日期 YYYY-MM-DD */
   tradeDate: string;
-  /** 带符号盈亏（万元，正盈负亏） */
+  /** 带符号盈亏（元，正盈负亏） */
   pnl: number;
   /** 开仓逻辑 */
   openLogic: string;
@@ -24,7 +24,7 @@ export interface JournalSummary {
   lossCount: number;
   /** 胜率 % */
   winRate: number;
-  /** 累计盈亏（万元） */
+  /** 累计盈亏（元） */
   totalPnl: number;
 }
 
@@ -37,7 +37,7 @@ export interface JournalResponse {
 export interface OrderFormValues {
   symbol: string;
   tradeDate: string;
-  /** 正数（万元） */
+  /** 正数（元） */
   amount: string;
   /** win | loss */
   pnlType: "win" | "loss";

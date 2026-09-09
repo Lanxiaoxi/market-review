@@ -6,7 +6,9 @@ interface OrderCardProps {
   onOpen: (order: TradeOrder) => void;
 }
 
-const fmtWan = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}万`;
+/** 带符号元金额：+12,500 元 / -8,600 元 */
+const fmtYuan = (v: number) =>
+  `${v >= 0 ? "+" : "-"}${Math.round(Math.abs(v)).toLocaleString("zh-CN")} 元`;
 
 export default function OrderCard({ order, onOpen }: OrderCardProps) {
   const isUp = order.pnl >= 0;
@@ -56,7 +58,7 @@ export default function OrderCard({ order, onOpen }: OrderCardProps) {
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
           <span className={`num ${styles.pnlNum}`} style={{ color: pnlColor }}>
-            {fmtWan(order.pnl)}
+            {fmtYuan(order.pnl)}
           </span>
           <span style={{ fontSize: 11, color: "var(--muted)" }}>{isUp ? "盈利" : "亏损"}</span>
         </div>

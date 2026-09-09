@@ -1,4 +1,8 @@
-import { useRef, useState } from "react";
+import {
+  useRef,
+  useState,
+  type ClipboardEvent as ReactClipboardEvent,
+} from "react";
 import { isAxiosError } from "axios";
 import Segmented from "@/components/common/Segmented";
 import PillButton from "@/components/common/PillButton";
@@ -43,6 +47,14 @@ function errText(e: unknown): string {
 }
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+/** 剪贴板 MIME → 扩展名（后端按扩展名白名单校验） */
+const MIME_TO_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/bmp": "bmp",
+};
 
 export default function OrderForm({ initial, onDone, onCancel }: OrderFormProps) {
   const isEdit = Boolean(initial);
@@ -88,6 +100,28 @@ export default function OrderForm({ initial, onDone, onCancel }: OrderFormProps)
     setPreview(URL.createObjectURL(f));
   };
 
+  /** 截图后直接在表单内 Ctrl+V 粘贴（剪贴板图片自动填入） */
+  const handlePaste = (e: ReactClipboardEvent<HTMLDivElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    let imageItem: DataTransferItem | null = null;
+    for (const item of Array.from(items)) {
+      if (item.kind === "file" && item.type.startsWith("image/")) {
+        imageItem = item;
+        break;
+      }
+    }
+    if (!imageItem) return;
+    const pasted = imageItem.getAsFile();
+    if (!pasted) return;
+    e.preventDefault(); // 阻止把图片当文本插入（如在笔记框内粘贴）
+    // 剪贴板文件常无合法文件名，按 MIME 补名，保证扩展名校验通过
+    const mime = pasted.type.toLowerCase();
+    const ext = MIME_TO_EXT[mime] ?? "png";
+    const named = new File([pasted], `paste_${Date.now()}.${ext}`, { type: mime });
+    pickFile(named);
+  };
+
   const clearImage = () => {
     if (preview?.startsWith("blob:")) URL.revokeObjectURL(preview);
     setFile(null);
@@ -106,7 +140,7 @@ export default function OrderForm({ initial, onDone, onCancel }: OrderFormProps)
     }
     const amt = parseFloat(amount);
     if (!Number.isFinite(amt) || amt <= 0) {
-      setError("盈亏金额需为大于 0 的数字（单位：万元）");
+      setError("盈亏金额需为大于 0 的数字（单位：元）");
       return;
     }
     if (!file && !preview) {
@@ -143,8 +177,11 @@ export default function OrderForm({ initial, onDone, onCancel }: OrderFormProps)
   const fullFieldStyle: React.CSSProperties = { flex: "1 1 100%" };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* 行 1：标的名 / 日期 / 金额 / 盈亏类型 */}
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: 16 }}
+      onPaste={handlePaste}
+    >
+      {/* 行 1：标的名 / 日期 */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "16px 20px" }}>
         <div className={styles.field}>
           <label className={styles.fieldLabel} htmlFor="jf-symbol">
@@ -174,20 +211,23 @@ export default function OrderForm({ initial, onDone, onCancel }: OrderFormProps)
             style={{ width: 150 }}
           />
         </div>
+      </div>
 
+      {/* 行 2：盈亏金额 / 开仓逻辑 / 平仓逻辑 */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "16px 20px" }}>
         <div className={styles.field}>
           <label className={styles.fieldLabel} htmlFor="jf-amount">
-            盈亏金额（万元）
+            盈亏金额（元）*
           </label>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <input
               id="jf-amount"
               className={`${styles.control} ${styles.amountInput}`}
-              inputMode="decimal"
+              inputMode="numeric"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              style={{ width: 120 }}
+              placeholder="如 12500"
+              style={{ width: 130 }}
             />
             <Segmented
               options={[...PNL_TYPE_OPTIONS]}
@@ -197,10 +237,7 @@ export default function OrderForm({ initial, onDone, onCancel }: OrderFormProps)
             />
           </div>
         </div>
-      </div>
 
-      {/* 行 2：开仓 / 平仓逻辑 */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "16px 20px" }}>
         <div className={styles.field}>
           <label className={styles.fieldLabel} htmlFor="jf-open">
             开仓逻辑 *
@@ -242,7 +279,9 @@ export default function OrderForm({ initial, onDone, onCancel }: OrderFormProps)
 
       {/* 行 3：订单截图 */}
       <div className={styles.field} style={fullFieldStyle}>
-        <span className={styles.fieldLabel}>订单截图 *（必填 1 张，jpg/png/webp/gif/bmp，≤5MB）</span>
+        <span className={styles.fieldLabel}>
+          订单截图 *（必填 1 张 · 点击选择，或截图后直接 Ctrl+V 粘贴 · ≤5MB）
+        </span>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {preview && (
             <img
@@ -267,7 +306,7 @@ export default function OrderForm({ initial, onDone, onCancel }: OrderFormProps)
               <circle cx="7.5" cy="8.5" r="1.3" fill="currentColor" />
               <path d="M4 15 L8 10.5 L11 13 L14 9.5 L16 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            {preview ? "更换图片" : "点击选择图片"}
+            {preview ? "更换图片" : "点击选择 / Ctrl+V 粘贴"}
           </div>
           {preview && (
             <button

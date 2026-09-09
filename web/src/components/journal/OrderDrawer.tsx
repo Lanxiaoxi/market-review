@@ -12,7 +12,9 @@ interface OrderDrawerProps {
   onDeleted?: (id: number) => void;
 }
 
-const fmtWan = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}万`;
+/** 带符号元金额：+12,500 元 / -8,600 元 */
+const fmtYuan = (v: number) =>
+  `${v >= 0 ? "+" : "-"}${Math.round(Math.abs(v)).toLocaleString("zh-CN")} 元`;
 
 function DetailStat({ label, value }: { label: string; value: string }) {
   return (
@@ -155,9 +157,9 @@ export default function OrderDrawer({ order, onClose, onDeleted }: OrderDrawerPr
                 <DetailStat label="盈亏类型" value={isUp ? "盈利" : "亏损"} />
                 <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-end" }}>
                   <span className="num" style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, color: pnlColor, lineHeight: 1.1 }}>
-                    {fmtWan(current.pnl)}
+                    {fmtYuan(current.pnl)}
                   </span>
-                  <span style={{ fontSize: 11, color: "var(--muted)" }}>盈亏（万元）</span>
+                  <span style={{ fontSize: 11, color: "var(--muted)" }}>盈亏（元）</span>
                 </div>
               </div>
 

@@ -42,7 +42,9 @@ function Metric({
   );
 }
 
-const fmtWan = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}万`;
+/** 累计盈亏：后端为元口径，此处换算为万元展示 */
+const fmtTotalPnl = (v: number) =>
+  `${v >= 0 ? "+" : ""}${(v / 10000).toFixed(2)}万`;
 
 export default function JournalPage() {
   const { data } = useJournalQuery();
@@ -111,7 +113,7 @@ export default function JournalPage() {
         <Metric
           value={summary?.totalPnl ?? 0}
           label="累计盈亏（万元）"
-          format={fmtWan}
+          format={fmtTotalPnl}
           color={(summary?.totalPnl ?? 0) >= 0 ? "var(--up)" : "var(--down)"}
         />
       </BaseCard>
