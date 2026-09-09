@@ -26,6 +26,8 @@ _load_dotenv()
 # 项目根目录（api/）
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
+# 用户上传文件（订单复盘截图等），经 /uploads 静态服务；UPLOAD_DIR 可用环境变量覆盖（测试/演示隔离）
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(DATA_DIR / "uploads")))
 
 
 class Settings:

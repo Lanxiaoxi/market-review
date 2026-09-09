@@ -19,6 +19,11 @@ your-domain.com {
         reverse_proxy 127.0.0.1:8668
     }
 
+    # 用户上传文件（订单复盘截图等，api/data/uploads）
+    handle /uploads/* {
+        reverse_proxy 127.0.0.1:8668
+    }
+
     # 静态文件
     handle {
         file_server

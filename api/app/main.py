@@ -5,10 +5,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from app.config import get_settings
+from app.config import get_settings, UPLOAD_DIR
 from app.models.db import init_db
-from app.routers import overview, sectors, watchlist, charts, history, intraday
+from app.routers import overview, sectors, watchlist, charts, history, intraday, journal
 from app.tasks import start_scheduler, shutdown_scheduler
 
 # 统一日志（模块内用 logging.getLogger(__name__)）
@@ -91,6 +92,11 @@ app.include_router(watchlist.router, prefix="/api")
 app.include_router(charts.router, prefix="/api")
 app.include_router(history.router, prefix="/api")
 app.include_router(intraday.router, prefix="/api")
+app.include_router(journal.router, prefix="/api")
+
+# 用户上传文件静态服务（订单复盘截图等；生产 Caddy 需把 /uploads/* 反代到此）
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 @app.get("/api/health")
